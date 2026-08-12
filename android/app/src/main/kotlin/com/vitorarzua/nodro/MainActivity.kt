@@ -1,4 +1,4 @@
-package com.vitorarzua.deduce
+package com.vitorarzua.nodro
 
 import io.flutter.embedding.android.FlutterActivity
 

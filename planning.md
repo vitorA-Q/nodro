@@ -1,4 +1,4 @@
-# DEDUCE — Planejamento (Fase 0)
+# NODRO — Planejamento (Fase 0)
 
 Documento escrito em português porque é para você ler e conferir. Identificadores de
 código, IDs de técnica e nomes de classe ficam em inglês, como manda a regra do projeto.
@@ -533,7 +533,7 @@ acento em "Área" também já quebrou ferramentas de build de Android em outros 
 
 | Opção | Consequência |
 |---|---|
-| **A. Mover para `C:\dev\deduce`** ⭐ recomendo | Some a classe inteira de problema. Você continua com o projeto no computador, só num caminho mais limpo. Leva 30 segundos e eu faço. |
+| **A. Mover para `C:\dev\nodro`** ⭐ recomendo | Some a classe inteira de problema. Você continua com o projeto no computador, só num caminho mais limpo. Leva 30 segundos e eu faço. |
 | **B. Deixar onde está** | Funciona hoje. Quando quebrar, vai quebrar de um jeito confuso e vou gastar tempo achando que é bug meu. |
 
 Se você quer o backup automático do OneDrive, dá para ter os dois: o código fica no
@@ -703,8 +703,8 @@ específico de plataforma. Você aprova essa dependência?
 
 ### 14. Você já tem um domínio na internet? 🟢 custo baixo
 
-Isso muda o SEO. Um endereço tipo `deduce.app` ou `deduce.com.br` vale bem mais que
-`seunome.github.io/deduce`. Se você não tiver, dá pra lançar sem e comprar depois, mas
+Isso muda o SEO. Um endereço tipo `nodro.app` ou `nodro.com.br` vale bem mais que
+`seunome.github.io/nodro`. Se você não tiver, dá pra lançar sem e comprar depois, mas
 mudar de endereço depois de indexado custa parte do tráfego já conquistado.
 
 ---

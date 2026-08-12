@@ -1,11 +1,11 @@
 {
-    "name": "deduce",
-    "short_name": "deduce",
+    "name": "Nodro",
+    "short_name": "Nodro",
     "start_url": ".",
     "display": "standalone",
     "background_color": "#0175C2",
     "theme_color": "#0175C2",
-    "description": "A new Flutter project.",
+    "description": "Nikoli-family logic puzzles with proven-unique generation, technique-based difficulty, and hints that teach.",
     "orientation": "portrait-primary",
     "prefer_related_applications": false,
     "icons": [

@@ -1,4 +1,4 @@
-# DEDUCE — Project Memory
+# NODRO — Project Memory
 
 Read this before touching anything. It is the permanent contract for this repo.
 Full briefing: `docs/briefing.md`. Phase planning: `planning.md`. Status log: `PROGRESS.md`.
@@ -25,6 +25,78 @@ names the technique, highlights the cells involved, and explains *why* the deduc
 is valid. A hint never reveals an answer without justifying the reasoning.
 
 If any decision threatens P1, P2 or P3 — stop and raise it with the user.
+
+## MILESTONE 1 — the only thing that matters right now
+
+**Star Battle, playable and published on the web.** Nothing else.
+
+Definition of done:
+- Star Battle engine complete, PROP-1..PROP-6 passing
+- Playable in browser, on phone and desktop
+- Explanatory hints with visual highlighting
+- Interactive tutorial
+- Daily challenge with a share button
+- Published at a URL the user can open and send to someone
+- pt-BR and en
+
+**Explicitly OUT of milestone 1:** Slitherlink, Shikaku, Tents, the other six locales, ads,
+the Pro purchase, Android, advanced stats, the learning path.
+
+**SCOPE RULE (S1)** — Until milestone 1 is live: anything worth doing that is not on the list
+above goes into `BACKLOG.md`. Do not implement it. Do not ask whether to implement it.
+
+**SPEED RULE (S2)** — Speed comes from cutting scope, NEVER from cutting tests. If relaxing
+C1, C2, C3 or any PROP ever looks tempting, the answer is no. Cut features instead.
+
+Build order is **sequential, not parallel**: Star Battle ships before Slitherlink starts.
+Slitherlink is the hardest of the four (global single-loop constraint) and must not sit on
+the critical path to the first milestone.
+
+## Locked product decisions
+
+These were decided by the user in Phase 0. Do not re-litigate them.
+
+- **D1 — Concurrency.** One implementation for web and Android: time-sliced solvers that
+  yield control between chunks. No isolate-only design (isolates do not exist on web).
+- **D2 — Pre-generated bank first.** The player must NEVER wait for generation to start
+  playing. Live generation is only for infinite mode and runs in the background. Bank budget:
+  **max 3 MB compressed total**, split evenly across the 4 difficulties. Report how many
+  puzzles fit.
+- **D3 — Difficulty storage.** Persist the **tier, 1..7**, never the label. The four visible
+  names (Fácil / Médio / Difícil / Extremo) are a display layer in ONE file, so changing to
+  five names later is a one-file change.
+- **D4 — PROP-3 is two-sided.** A puzzle is difficulty `d` iff the human solver succeeds
+  with techniques up to `d` AND fails with techniques up to `d−1`.
+- **D5 — PROP-6 per type.** Slitherlink: applies fully. Star Battle: not applicable, replaced
+  by boundary rigidity. Shikaku: not applicable, replaced by value-erasure minimality. Tents:
+  applies modulo the two sum identities (one row clue and one column clue are always derivable
+  and are excluded from the test). See `planning.md` section (d).
+- **D6 — Star Battle sizes.** 6x6 (1 star), 8x8 (1), 9x9 (2), 10x10 (2).
+- **D7 — Monetization shape.** Free: every puzzle type, unlimited puzzles, daily challenge,
+  1 free hint per puzzle, ads. Pro (one-time): unlimited hints, no ads, technique library and
+  learning path, full stats. **NEVER paywall a puzzle type** — it is the main competitor's
+  mistake and it kills SEO.
+- **D8 — Hint economy.** 1 free hint per puzzle; each additional hint costs one rewarded ad;
+  Pro is unlimited. Ads arrive in Phase 6, but **the counter is built now**.
+- **D9 — Daily challenge.** One puzzle per day per type, seed derived from the date, identical
+  for everyone, no server. The Wordle-style **share button is mandatory in milestone 1** and
+  must not reveal the solution.
+- **D10 — Persistence.** Simplest thing that works identically on web and Android (JSON in
+  key-value storage). Hidden behind a repository interface so swapping it is a one-file change.
+  Do not spend time evaluating database libraries.
+- **D11 — Accessibility is not optional.** Star Battle regions are separated by a **thick
+  border**, not only by colour. Colour-safe palette. Colour is reinforcement, never the only
+  carrier of information.
+- **D12 — Tents rules.** Show every row and column number (genre standard). Victory = all
+  tents correctly placed. Grass marks are an optional aid and do not count toward victory.
+- **D13 — Locales.** Milestone 1 ships pt-BR and en only. All text comes from `.arb` from day
+  one; the other six locales land before the Play Store release, not before milestone 1.
+- **D14 — Hosting.** Cloudflare Pages, because it serves per-type SEO URLs with real redirect
+  and header control, works with a private repo, and its CDN is measurably faster from Brazil
+  than GitHub Pages.
+- **D15 — Test cadence.** 150 fast instances per run day-to-day; the full 1,000 before every
+  delivery. Measure and report the real wall-clock time of the 1,000. If it exceeds 10 minutes,
+  propose parallelisation — **never reduce the count**.
 
 ## Why the tests are the product
 

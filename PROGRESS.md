@@ -1,4 +1,4 @@
-# DEDUCE — Diário de progresso
+# NODRO — Diário de progresso
 
 Escrito em português simples. Uma seção por fase, na ordem em que aconteceram.
 
@@ -15,7 +15,7 @@ Escrito em português simples. Uma seção por fase, na ordem em que aconteceram
    ser chamado de qualquer lugar do computador. Resolvi apontando o caminho completo em
    cada comando — não precisa mexer em nada na sua máquina.
 
-2. **Criei o esqueleto do app** com o identificador `com.vitorarzua`, nome `deduce`, para
+2. **Criei o esqueleto do app** com o identificador `com.vitorarzua`, nome `nodro`, para
    **Android e Web**. A web foi incluída desde o primeiro minuto, como manda a estratégia.
 
 3. **Criei o repositório git** e fiz o primeiro commit. Aqui houve um tropeço: o git não

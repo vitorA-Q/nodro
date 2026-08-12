@@ -1,11 +1,11 @@
-# DEDUCE — Briefing original
+# NODRO — Briefing original
 
 Este arquivo é a cópia integral do briefing do projeto, a partir da seção "MISSÃO",
 para poder ser referenciado em sessões futuras sem precisar recolar nada.
 
 Regras adicionais que valem sobre este documento:
 
-- **ORG do projeto:** `com.vitorarzua` (package Android: `com.vitorarzua.deduce`)
+- **ORG do projeto:** `com.vitorarzua` (package Android: `com.vitorarzua.nodro`)
 - **Regra permanente de comunicação:** o usuário não programa. Toda comunicação com ele e
   todo o `PROGRESS.md` são em português simples. Código, nomes de variáveis e comentários
   ficam em inglês.
@@ -14,7 +14,7 @@ Regras adicionais que valem sobre este documento:
 
 # MISSÃO
 
-DEDUCE é uma coleção de puzzles lógicos combinatórios da família Nikoli
+NODRO é uma coleção de puzzles lógicos combinatórios da família Nikoli
 (Star Battle, Slitherlink, Shikaku, Tents & Trees e outros), com três
 propriedades que definem o produto e não podem ser comprometidas por
 nenhuma decisão de implementação:
