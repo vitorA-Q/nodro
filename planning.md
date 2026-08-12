@@ -112,10 +112,117 @@ de pesquisa com aviso, e ambas serão testadas contra a solução conhecida por 
 
 ---
 
-### Slitherlink, Shikaku, Tents & Trees
+### Slitherlink — 30 técnicas em 6 tiers ✅ pesquisa concluída
 
-> **[PENDENTE]** As outras três pesquisas ainda estão rodando. Esta seção é completada
-> assim que retornarem.
+Documento completo: `docs/research/slitherlink_techniques.md`
+
+| Tier | Quantas | Exemplos |
+|---|---|---|
+| 1 — aritmética de uma pista só | 8 | regra do zero; 3 no canto; 1 no canto; 3 ao lado de 0 |
+| 2 — duas pistas conversando | 6 | dois 3 vizinhos; dois 3 na diagonal; dois 1 na diagonal |
+| 3 — regras do ponto | 4 | ponto já tem duas linhas; uma linha entra, outra tem que sair |
+| 4 — conectividade | 3 | não fechar um laço pequeno cedo demais; ponte forçada |
+| 5 — dentro/fora | 5 | colorir células como dentro ou fora do laço |
+| 6 — cadeias longas | 4 | corrente diagonal de 2; 3…2…2…3 na diagonal |
+
+**A pergunta arquitetural que o briefing mandou responder ANTES de implementar, respondida:**
+
+O briefing pedia para tratar a conectividade do laço explicitamente com union-find e
+documentar a abordagem. A pesquisa achou a resposta precisa, e ela é mais sutil do que
+parece:
+
+- **Colorir dentro/fora sozinho NÃO garante um laço único.** Existem colorações
+  perfeitamente consistentes — todo ponto com o número certo de linhas, tudo válido
+  localmente — que desenham **dois laços separados**. O contraexemplo é simples: dois
+  retângulos, um dentro do outro. Fora = fora, o anel entre eles = dentro, o miolo = fora.
+  Está tudo consistente e são dois laços.
+- **Union-find sozinho também não basta**, porque ele só enxerga linhas já desenhadas. Ele
+  é cego para os "X" (arestas marcadas como ausentes), e é exatamente por eles que a
+  informação viaja longe no Slitherlink.
+- **Conclusão: são necessárias as duas estruturas ao mesmo tempo.** Uma união-e-busca sobre
+  os pontos para detectar laço prematuro, e uma união-e-busca *com paridade* sobre as
+  células para a coloração. Elas veem informações completamente diferentes.
+- **E no fim, sempre uma verificação independente:** percorrer o laço e conferir que ele
+  volta ao início depois de exatamente o número de arestas que existem. É barato e pega o
+  erro de contagem que a regra de laço prematuro erra com facilidade.
+
+**Armadilha registrada:** a regra mais famosa do Slitherlink — "dois 3 lado a lado, a
+aresta do meio é linha" — **não é uma dedução puramente local**. Existe um caso legal em
+que ela não vale. A conclusão só é válida porque esse caso teria que ser o puzzle inteiro.
+Vou implementá-la com a checagem que fecha o buraco.
+
+---
+
+### Shikaku — 19 técnicas em 7 tiers ✅ pesquisa concluída
+
+Documento completo: `docs/research/shikaku_techniques.md`
+
+| Tier | Quantas | Exemplos |
+|---|---|---|
+| 1 | 2 | pista 1; sobrou um único encaixe possível |
+| 2 | 5 | número primo vira uma tira 1xN; retângulo não pode conter outro número |
+| 3 | 2 | só uma pista consegue alcançar esta célula |
+| 4 | 3 | células presentes em todos os encaixes possíveis de uma pista |
+| 5 | 2 | dois números perto demais disputam o mesmo corredor |
+| 6 | 4 | contagem de área numa região fechada; paridade tipo tabuleiro de xadrez |
+| 7 | 1 | "se este número tomasse esta célula, aquela ali ficaria órfã" |
+
+A literatura de Shikaku é genuinamente mais pobre que a dos outros. Duas fontes que eu
+esperava usar simplesmente não existem (a Conceptis nunca publicou nada sobre Shikaku). As
+melhores fontes acabaram sendo **código, não texto** — o gerador do Simon Tatham, que é o
+melhor documentado que existe. Sete das 19 técnicas eu derivei da estrutura do problema, e
+estão marcadas como tal no documento.
+
+**Achado que muda a geração:** dificuldade em Shikaku vem de **retângulos maiores e menos
+numerosos**, não de mais pistas. E a **posição** do número dentro do retângulo determina
+tanto a unicidade quanto a dificuldade — a mesma divisão da grade pode ser única ou ambígua
+dependendo só de onde o número é colocado. É lá que o gerador deve gastar o orçamento.
+
+**Padrões fatais catalogados** (as configurações que produzem duas respostas e matam apps
+concorrentes): o menor deles são dois "2" na diagonal de um bloco 2x2 isolado — sempre
+ambíguo. A família geral está descrita no documento e vai virar um filtro no gerador.
+
+---
+
+### Tents & Trees — 22 técnicas em 7 tiers ✅ pesquisa concluída
+
+Documento completo: `docs/research/tents_techniques.md`
+
+| Tier | Quantas | Exemplos |
+|---|---|---|
+| 1 | 3 | linha com número 0; linha já completa; célula sem árvore vizinha |
+| 2 | 5 | árvore com um único lugar possível; grama em volta de toda barraca |
+| 3 | 4 | vagas restantes = barracas restantes; capacidade de um bloco 2x2 |
+| 4 | 3 | **teorema do casamento de Hall** |
+| 5 | 3 | duas árvores que só alcançam duas células; conversa entre contagem e casamento |
+| 6 | 3 | enumerar todas as arrumações de uma linha; filtro por emparelhamento máximo |
+| 7 | 1 | relaxação global |
+
+**O coração do Tents é um teorema, e ele dá uma dica excelente.** O puzzle é, no fundo, um
+problema de casamento: cada árvore precisa de uma barraca só dela. O teorema de Hall diz
+que isso é possível se e só se, para todo grupo de árvores, o número de células que elas
+conseguem alcançar juntas é pelo menos igual ao número de árvores. A dica que sai disso é
+das mais bonitas do app inteiro: *"estas três árvores, juntas, só alcançam estas três
+células — então as três células são barracas, e nenhuma outra árvore pode usá-las"*.
+
+**Decisão técnica com efeito visível:** existe um algoritmo (Hopcroft–Karp) que resolve o
+casamento inteiro em microssegundos e que é **mais forte que todas as técnicas de tier 4 e
+5 juntas**. A recomendação é usar ele como motor, mas **extrair dele a explicação em
+formato humano** — porque "nenhum emparelhamento máximo usa esta célula" não ensina nada,
+enquanto "estas três árvores só alcançam estas três células" ensina. Isso dá força de tier
+6 com explicação de tier 4. É exatamente o que P3 precisa.
+
+**Achado que melhora o PROP-3:** o Simon Tatham usa uma definição de dificuldade melhor que
+a que estava no briefing. Em vez de "o tier mais alto que o solver usou", ele testa dos dois
+lados: *o puzzle tem dificuldade d se o solver resolve com as técnicas até d **e falha** com
+as técnicas até d−1*. É mais rigoroso, porque pega o caso em que uma técnica avançada foi
+usada mas não era necessária. Vou adotar essa forma.
+
+**Armadilha registrada, e é séria:** a técnica de enumerar arrumações de uma linha (tier 6)
+é a mais perigosa do catálogo inteiro. Se qualquer filtro usado durante a enumeração for
+um "quase certo" em vez de uma certeza, ela apaga silenciosamente a arrumação verdadeira e
+depois marca com confiança total uma célula errada. Está marcada com aviso duplo no
+documento.
 
 ---
 
@@ -194,12 +301,15 @@ PROP-6 diz "remover qualquer pista adicional quebra a unicidade". Isso faz senti
 em dois dos quatro tipos e **não faz sentido literal nos outros dois** — e o briefing pede
 explicitamente que eu declare onde não se aplica e por quê. Segue a declaração.
 
+> ⚠️ **Esta seção foi corrigida depois da pesquisa.** Duas coisas que eu tinha escrito
+> antes estavam erradas, e a pesquisa provou que estavam. As correções estão marcadas.
+
 | Tipo | PROP-6 se aplica? | Como é garantida / o que a substitui |
 |---|---|---|
 | Slitherlink | **Sim, plenamente** | Por construção: o gerador só para de remover quando nenhuma remoção adicional preserva a unicidade. O teste apenas reconfirma. |
-| Tents & Trees | **Sim, nos números** | As pistas removíveis são os números de linha/coluna. Mesma remoção gulosa. As árvores não são removíveis (ver abaixo). |
+| Tents & Trees | **Sim, mas nunca no formato literal** ⚠️ corrigido | Dois números são *provadamente* redundantes em todo Tents. Aplicar com a correção descrita abaixo. |
 | Star Battle | **Não se aplica literalmente** | Não existem pistas discretas: a pista é a partição em regiões, que é uma peça só. Substituição proposta abaixo. |
-| Shikaku | **Não se aplica literalmente** | O conjunto de pistas é estruturalmente forçado. Substituição proposta abaixo. |
+| Shikaku | **Não se aplica, e minha primeira substituição era inútil** ⚠️ corrigido | Substituição nova proposta abaixo. |
 
 ### Star Battle — por que não se aplica, e o que colocar no lugar
 
@@ -214,27 +324,65 @@ unicidade. Ou seja: o desenho é *localmente rígido* — não existe variação
 produza outro puzzle válido e igualmente único. Isso é testável, é rigoroso e captura o
 espírito de "sem gordura".
 
-### Shikaku — por que não se aplica, e o que colocar no lugar
+### Shikaku — ⚠️ CORREÇÃO: minha primeira proposta era inútil
 
-Aqui a razão é aritmética. Cada retângulo precisa conter exatamente um número, e a soma de
-todos os números tem que dar exatamente a área da grade. Se você remove um número, um
-retângulo fica órfão e a soma não fecha: o puzzle não passa a ter *duas* soluções, ele
-passa a ter **zero**. Não é um puzzle mais fraco, é um puzzle quebrado.
+A razão de PROP-6 não se aplicar continua valendo, e é aritmética. Cada retângulo precisa
+conter exatamente um número, e a soma de todos os números tem que dar exatamente a área da
+grade. Se você remove um número, um retângulo fica órfão e a soma não fecha: o puzzle não
+passa a ter *duas* soluções, ele passa a ter **zero**.
 
-**Substituição — PROP-6-SK (minimalidade exata):** para toda pista `c`, o puzzle sem `c`
-tem exatamente **zero** soluções. Isso é um teste real e forte: prova que o conjunto de
-pistas não tem nenhuma redundância, porque nenhuma delas é dispensável nem sequer para a
-mera existência de solução. É o análogo correto de PROP-6 para este tipo.
+**Onde eu errei.** Eu tinha proposto "PROP-6-SK: para toda pista, o puzzle sem ela tem zero
+soluções" e te disse que era um teste real e forte. **Não é.** Aquilo é verdade em *todo*
+Shikaku que já foi impresso na história, inclusive nos piores. Um teste que aprova 100% dos
+candidatos não distingue nada — ele só gastaria tempo de máquina fingindo que protege algo.
+Isso é exatamente o tipo de teste decorativo que o seu briefing manda evitar.
 
-### Tents & Trees — o recorte exato
+**Substituição nova — PROP-6-SK (minimalidade de valor).** Em vez de apagar a pista inteira,
+troca-se o **número** dela por uma interrogação, mantendo a marca da célula. Isso é uma
+variante publicada de verdade do Shikaku, não invenção minha. A estrutura sobrevive: o
+número de retângulos continua o mesmo, e o valor apagado é recuperável pela soma. Então
+perguntar *"continua tendo uma resposta só?"* passa a ser uma pergunta com sentido. Se sim,
+aquele número era informação redundante e o puzzle **não** é minimal.
 
-As árvores não são pistas removíveis: elas *são* o puzzle (definem quantas barracas
-existem). Os números de linha e coluna, sim, são removíveis. Então PROP-6-T se aplica só a
-eles, com remoção gulosa idêntica à do Slitherlink.
+Esse é o análogo estrutural direto da minimalidade do Sudoku, e é o que eu recomendo.
+Existem duas alternativas (fundir dois retângulos vizinhos num só, ou medir quantas posições
+o número poderia ocupar dentro do próprio retângulo sem quebrar a unicidade). As três estão
+descritas em `docs/research/shikaku_techniques.md`. Isso virou a pergunta 6.
 
-**Porém há uma decisão de produto aqui**, que virou a pergunta 7 lá embaixo: o Tents
-clássico mostra *todos* os números. Esconder os redundantes deixa o puzzle mais difícil e
-mais "limpo" visualmente, mas foge da convenção que o jogador conhece.
+### Tents & Trees — ⚠️ CORREÇÃO: PROP-6 literal é matematicamente impossível aqui
+
+Eu tinha escrito que PROP-6 "se aplica plenamente aos números". **Está errado, e dá para
+provar em duas linhas.**
+
+O número de barracas é igual ao número de árvores, e as árvores estão visíveis no tabuleiro.
+Logo:
+
+> soma de todos os números das linhas = soma de todos os números das colunas = número de árvores
+
+Isso quer dizer que **qualquer número de linha é recuperável a partir dos outros** — basta
+subtrair. O mesmo vale para qualquer número de coluna. E dá para apagar um de cada eixo ao
+mesmo tempo. Portanto **todo Tents tem pelo menos duas pistas provadamente redundantes**, e
+a condição literal de PROP-6 nunca é satisfeita por nenhum Tents completo.
+
+**Por que isso importa na prática:** se eu tivesse implementado o teste ingênuo — apaga cada
+pista, resolve, confere unicidade — **todos os 1.000 puzzles teriam sido reprovados**, e eu
+teria passado horas caçando um bug no gerador que não existe. Este é o tipo exato de
+armadilha que a Fase 0 existe para pegar.
+
+**Correção — PROP-6-T (minimalidade módulo as duas identidades):** designa-se um número de
+linha e um de coluna como "derivados por convenção", tiram-se eles do teste, e exige-se que
+nenhuma das pistas restantes possa sair sem quebrar a unicidade.
+
+As árvores continuam não sendo pistas removíveis: tirar uma árvore não enfraquece o puzzle,
+**troca o puzzle** — o número de barracas muda e todos os números de linha e coluna que
+aquela barraca contava ficam errados. Árvore é tabuleiro, não é pista.
+
+**Um segundo achado sobre Tents, que é decisão de produto:** existe um caso em que as
+posições das barracas são únicas mas o *emparelhamento* árvore↔barraca não é — duas
+atribuições diferentes funcionam igual. A recomendação da literatura é: **ao conferir a
+jogada do usuário, aceitar se existe pelo menos um emparelhamento válido; ao gerar, exigir
+que exista exatamente um**. Isso é generoso com o jogador e rigoroso com o gerador. Virou a
+pergunta 7.
 
 ---
 
@@ -322,7 +470,21 @@ medido na Fase 4 com número real, não com estimativa.
 A pasta é `OneDrive\Área de Trabalho\deduce`. Dois problemas conhecidos: o OneDrive
 sincroniza e trava arquivos no meio de um build, causando erros que parecem aleatórios; e
 o acento em "Área" já causou problemas com as ferramentas de build do Android em outros
-projetos. Nada quebrou até agora, mas é um risco barato de eliminar. Pergunta 2.
+projetos.
+
+⚠️ **Isto deixou de ser hipótese na Fase 0.** Ao rodar os testes pela segunda vez, o
+comando falhou com:
+
+```
+Flutter failed to delete a directory at "build\unit_test_assets".
+The flutter tool cannot access the file or directory.
+```
+
+Apaguei a pasta `build` e o teste passou normalmente na sequência. Ou seja: o build
+funcionou, quebrou sozinho, e voltou a funcionar sem nenhuma mudança no código. Esse é
+exatamente o padrão de falha que custa uma tarde quando acontece no meio de algo
+complicado. Aconteceu duas vezes em duas rodadas de teste. Vai piorar quando a suíte tiver
+1.000 puzzles por tipo em vez de um teste. Pergunta 2.
 
 ### E10 — Qualidade das traduções das dicas
 
@@ -425,29 +587,57 @@ em três lugares.
 
 ---
 
-### 6. Você aprova as duas substituições de PROP-6? 🟠 custo médio
+### 6. Você aprova as correções no contrato de testes? 🟠 custo médio
 
-Como expliquei na seção (d): em Star Battle e Shikaku, "remover uma pista" literalmente não
-existe. Propus dois substitutos que testam a mesma ideia de "sem gordura":
+Esta é a única parte onde eu estou propondo **mudar o que você escreveu**, então preciso do
+seu "ok" explícito. São quatro itens, e três deles vieram da pesquisa provar que a versão
+literal não funcionaria.
 
-- **Star Battle:** nenhuma célula pode mudar de região sem quebrar o puzzle.
-- **Shikaku:** remover qualquer número deixa o puzzle com **zero** soluções (não com duas).
+**6a. Star Battle — PROP-6 não se aplica.** Não existem pistas discretas para remover; a
+pista é o desenho das regiões, que é uma peça só. Substituto: *nenhuma célula pode trocar de
+região sem quebrar o puzzle* (o desenho é localmente rígido).
 
-**Preciso do seu "ok" nisso**, porque é a única parte do contrato de testes onde eu estou
-propondo mudar o que você escreveu. Se você discordar, prefiro saber agora.
+**6b. Shikaku — PROP-6 não se aplica, e minha primeira ideia era inútil.** Eu tinha proposto
+"tirar qualquer número deixa zero soluções" e te disse que era forte. Não é: isso é verdade
+em todo Shikaku que já existiu, então aprovaria 100% dos puzzles e não protegeria nada.
+Substituto novo: trocar o **número** por uma interrogação, mantendo a marca da célula, e
+exigir que a resposta deixe de ser única. É uma variante publicada de verdade do Shikaku e é
+o análogo direto da minimalidade do Sudoku.
+
+**6c. Tents — PROP-6 literal é matematicamente impossível.** A soma dos números das linhas é
+igual à soma das colunas é igual ao número de árvores, que estão à vista. Então dois números
+são sempre dedutíveis a partir dos outros, em qualquer Tents. Se eu tivesse implementado o
+teste ingênuo, **os 1.000 puzzles teriam sido reprovados** e eu teria caçado um bug que não
+existe. Correção: excluir um número de linha e um de coluna do teste, e exigir minimalidade
+de todo o resto.
+
+**6d. PROP-3 — proposta de deixar o teste MAIS rigoroso, não menos.** O briefing define a
+dificuldade como "o tier mais alto que o solver humano precisou usar". A literatura usa uma
+definição melhor, testada dos dois lados: *o puzzle tem dificuldade d se o solver resolve
+usando técnicas até d **e falha** usando técnicas até d−1*. A diferença prática: a versão do
+briefing aceitaria um puzzle rotulado "difícil" onde a técnica difícil foi usada mas não era
+necessária — o jogador acharia fácil e o rótulo seria mentira. A versão de dois lados pega
+isso. É mais trabalho de máquina e mais honesto.
 
 ---
 
-### 7. No Tents, escondo os números redundantes? 🟡 custo médio
+### 7. Tents: duas decisões pequenas com efeito visível 🟡 custo médio
 
-O Tents clássico mostra o número de todas as linhas e colunas. Alguns desses números são
-"de graça" — dá pra deduzir sem eles.
+**7a. Escondo os números redundantes?** O Tents clássico mostra o número de todas as linhas
+e colunas.
 
 | Opção | Consequência |
 |---|---|
 | **A. Mostrar todos (clássico)** ⭐ recomendo para o lançamento | O jogador reconhece o puzzle. Zero atrito. |
-| **B. Esconder os redundantes** | Puzzle mais difícil e visualmente mais limpo, mas o jogador vindo de outro app estranha. |
-| **C. Mostrar todos, e "esconder redundantes" vira um modo extra do Pro** | Diferencial de venda real, sem confundir quem chega. |
+| **B. Esconder os redundantes** | Puzzle mais difícil e visualmente mais limpo, mas quem vem de outro app estranha. |
+| **C. Mostrar todos, e "esconder redundantes" vira modo extra do Pro** | Diferencial de venda real, sem confundir quem chega. |
+
+**7b. O que conta como "acertou"?** Existe um caso raro em que as barracas ficam nos lugares
+certos mas dá para ligar árvore↔barraca de duas formas diferentes. Recomendo o que a
+literatura faz: **na hora de conferir a jogada do jogador, aceitar se existe pelo menos uma
+ligação válida** (generoso — ele acertou onde importa), **e na hora de gerar, exigir que só
+exista uma** (rigoroso). Assim ninguém é punido por um detalhe que o puzzle não pedia.
+Confirma?
 
 ---
 
