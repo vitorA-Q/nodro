@@ -1,89 +1,145 @@
 import 'dart:math' as math;
 
+import 'package:flutter/foundation.dart' show setEquals;
 import 'package:flutter/material.dart';
 
 import '../../engine/puzzles/star_battle/board.dart';
-import '../../engine/puzzles/star_battle/model.dart';
+import '../game/play_grid.dart';
+import '../theme/nodro_theme.dart';
 
 /// Draws a Star Battle board.
 ///
-/// ## Accessibility is the design, not a coat of paint (decision D11)
+/// ## The border is the information (decision D11)
 ///
-/// **The thick border carries the information. Colour is reinforcement only.**
-/// Region fills are deliberately pale and close together in luminance, so the
-/// board stays fully readable in greyscale: every region boundary is a heavy
-/// dark stroke, every internal cell edge is a hairline. Someone who cannot
-/// separate the tints loses nothing, because the tints were never load-bearing.
+/// Region identity is carried by a heavy stroke; the tints are reinforcement
+/// and are near-identical in greyscale on purpose. See [NodroPalette].
 ///
-/// Visual direction: a well-printed paper puzzle. Warm off-white ground, crisp
-/// high-contrast rules, no texture, no gloss, no ornament.
+/// ## What each layer is for
+///
+/// 1. region tints — grouping, colour-seeing eyes only
+/// 2. hairlines — the grid reads as a grid
+/// 3. **neighbour wash** — the eight cells around a star are shaded to say
+///    "occupied". This teaches the no-touching rule without text and is the
+///    most valuable single element on the board.
+/// 4. region borders — the actual information
+/// 5. marks — stars heavy and dark, crosses light and thin
+/// 6. conflict rings — red, and red appears nowhere else in the app
 class StarBattlePainter extends CustomPainter {
   const StarBattlePainter({
-    required this.puzzle,
-    required this.cells,
-    required this.isSolved,
+    required this.grid,
+    required this.palette,
+    required this.blocked,
+    required this.conflicts,
+    required this.placeProgress,
+    required this.placedCell,
+    required this.conflictProgress,
+    required this.winProgress,
   });
 
-  final StarBattlePuzzle puzzle;
+  final PlayGrid grid;
+  final NodroPalette palette;
 
-  /// Row-major player marks. Not the solver's board — the player may put a star
-  /// anywhere, including somewhere wrong.
-  final List<CellState> cells;
+  /// Cells adjacent to a star. Passed in rather than recomputed so the screen
+  /// can animate their arrival.
+  final Set<int> blocked;
+  final Set<int> conflicts;
 
-  final bool isSolved;
+  /// 0..1 for the star most recently placed. Gives it scale and overshoot so a
+  /// mark never simply appears.
+  final double placeProgress;
+  final int? placedCell;
 
-  // Paper-like palette. Fixed, not theme-derived, until dark mode arrives.
-  static const Color paper = Color(0xFFFBFAF6);
-  static const Color ink = Color(0xFF1E2430);
-  static const Color hairline = Color(0xFFC9CDD6);
-  static const Color markGrey = Color(0xFF9AA1AE);
-  static const Color success = Color(0xFF1B7F5A);
+  /// 0..1 for conflict rings. Animates IN, then holds still — a loop would nag
+  /// a player who is trying to concentrate, for as long as the mistake exists.
+  final double conflictProgress;
 
-  /// Ten pale tints of near-equal luminance. Near-equal is the point: if one
-  /// were much darker, greyscale viewers would read it as meaningful when it is
-  /// not. They exist to help the eye group cells, nothing more.
-  static const List<Color> regionTints = <Color>[
-    Color(0xFFEFF3FA),
-    Color(0xFFF6F0F8),
-    Color(0xFFEFF7F1),
-    Color(0xFFFBF2EC),
-    Color(0xFFF1F5EC),
-    Color(0xFFF3F1FB),
-    Color(0xFFFAF1F3),
-    Color(0xFFECF6F7),
-    Color(0xFFF8F5EA),
-    Color(0xFFF2F0F0),
-  ];
+  /// 0..1 across the victory sequence.
+  final double winProgress;
+
+  bool get _isSolved => winProgress > 0;
 
   @override
   void paint(Canvas canvas, Size size) {
-    final n = puzzle.size;
+    final n = grid.size;
     final cell = size.width / n;
 
     _paintRegionFills(canvas, n, cell);
+    _paintNeighbourWash(canvas, n, cell);
     _paintHairlines(canvas, n, cell, size);
     _paintRegionBorders(canvas, n, cell, size);
     _paintMarks(canvas, n, cell);
+    _paintConflicts(canvas, n, cell);
   }
 
   void _paintRegionFills(Canvas canvas, int n, double cell) {
     final paint = Paint()..style = PaintingStyle.fill;
     for (var row = 0; row < n; row++) {
       for (var col = 0; col < n; col++) {
-        paint.color = regionTints[puzzle.regionAt(row, col) % regionTints.length];
-        canvas.drawRect(
-          Rect.fromLTWH(col * cell, row * cell, cell, cell),
-          paint,
-        );
+        paint.color = palette
+            .regionTints[grid.puzzle.regionAt(row, col) % palette.regionTints.length];
+        canvas.drawRect(Rect.fromLTWH(col * cell, row * cell, cell, cell), paint);
       }
     }
   }
 
-  /// Hairlines mark every cell edge so the grid reads as a grid; the heavy
-  /// strokes drawn afterwards are what separate the regions.
+  /// The teaching layer. An inset wash, slightly rounded so it reads as a
+  /// recess rather than as another block of colour, and neutral rather than red
+  /// because "you cannot use this" is not the same message as "you made a
+  /// mistake".
+  void _paintNeighbourWash(Canvas canvas, int n, double cell) {
+    if (blocked.isEmpty) {
+      return;
+    }
+    final inset = cell * 0.06;
+    for (final index in blocked) {
+      // Cells around the star just placed fade in; the rest are already there.
+      final t = index == placedCell || _neighboursOfPlaced.contains(index)
+          ? Curves.easeOut.transform(placeProgress.clamp(0.0, 1.0))
+          : 1.0;
+      if (t <= 0) {
+        continue;
+      }
+      final row = index ~/ n;
+      final col = index % n;
+      canvas.drawRRect(
+        RRect.fromRectAndRadius(
+          Rect.fromLTWH(col * cell + inset, row * cell + inset,
+              cell - inset * 2, cell - inset * 2),
+          Radius.circular(cell * 0.12),
+        ),
+        Paint()
+          ..color = palette.neighbourWash.withValues(
+              alpha: palette.neighbourWash.a * t)
+          ..style = PaintingStyle.fill,
+      );
+    }
+  }
+
+  Set<int> get _neighboursOfPlaced {
+    final placed = placedCell;
+    if (placed == null) {
+      return const <int>{};
+    }
+    final n = grid.size;
+    final row = placed ~/ n;
+    final col = placed % n;
+    final result = <int>{};
+    for (var dr = -1; dr <= 1; dr++) {
+      for (var dc = -1; dc <= 1; dc++) {
+        final r = row + dr;
+        final c = col + dc;
+        if (r < 0 || r >= n || c < 0 || c >= n) {
+          continue;
+        }
+        result.add(r * n + c);
+      }
+    }
+    return result;
+  }
+
   void _paintHairlines(Canvas canvas, int n, double cell, Size size) {
     final paint = Paint()
-      ..color = hairline
+      ..color = palette.hairline
       ..strokeWidth = 1
       ..style = PaintingStyle.stroke;
     for (var i = 1; i < n; i++) {
@@ -94,50 +150,50 @@ class StarBattlePainter extends CustomPainter {
   }
 
   void _paintRegionBorders(Canvas canvas, int n, double cell, Size size) {
-    // Scales with the board so the boundary stays obvious on a phone and does
-    // not turn into a blob on a desktop.
-    final thickness = math.max(2.5, cell * 0.09);
+    final thickness = math.max(2.5, cell * 0.085);
     final paint = Paint()
-      ..color = isSolved ? success : ink
+      ..color = _isSolved
+          ? Color.lerp(palette.ink, palette.success, winProgress)!
+          : palette.ink
       ..strokeWidth = thickness
       ..strokeCap = StrokeCap.square
       ..style = PaintingStyle.stroke;
 
     for (var row = 0; row < n; row++) {
       for (var col = 0; col < n; col++) {
-        final region = puzzle.regionAt(row, col);
+        final region = grid.puzzle.regionAt(row, col);
         final left = col * cell;
         final top = row * cell;
-
-        if (col + 1 < n && puzzle.regionAt(row, col + 1) != region) {
+        if (col + 1 < n && grid.puzzle.regionAt(row, col + 1) != region) {
           canvas.drawLine(
               Offset(left + cell, top), Offset(left + cell, top + cell), paint);
         }
-        if (row + 1 < n && puzzle.regionAt(row + 1, col) != region) {
+        if (row + 1 < n && grid.puzzle.regionAt(row + 1, col) != region) {
           canvas.drawLine(
               Offset(left, top + cell), Offset(left + cell, top + cell), paint);
         }
       }
     }
 
-    // Outer frame, drawn last so corners stay square.
     canvas.drawRect(
-      Rect.fromLTWH(
-          thickness / 2, thickness / 2, size.width - thickness, size.height - thickness),
+      Rect.fromLTWH(thickness / 2, thickness / 2, size.width - thickness,
+          size.height - thickness),
       paint,
     );
   }
 
   void _paintMarks(Canvas canvas, int n, double cell) {
+    final stars = grid.starIndices;
     for (var row = 0; row < n; row++) {
       for (var col = 0; col < n; col++) {
-        final state = cells[row * n + col];
+        final index = row * n + col;
+        final state = grid.stateAt(index);
         if (state == CellState.unknown) {
           continue;
         }
         final centre = Offset(col * cell + cell / 2, row * cell + cell / 2);
         if (state == CellState.star) {
-          _paintStar(canvas, centre, cell * 0.32);
+          _paintStar(canvas, centre, cell, index, stars);
         } else {
           _paintCross(canvas, centre, cell * 0.17);
         }
@@ -145,17 +201,37 @@ class StarBattlePainter extends CustomPainter {
     }
   }
 
-  /// A solid five-pointed star. Deliberately large and filled: at a glance it
-  /// must never be confusable with the cross, even on a small phone.
-  void _paintStar(Canvas canvas, Offset centre, double radius) {
+  void _paintStar(
+      Canvas canvas, Offset centre, double cell, int index, List<int> stars) {
+    var scale = 1.0;
+
+    if (index == placedCell && placeProgress < 1) {
+      // Overshoot: the mark springs past full size and settles. This is what
+      // makes a tap feel answered rather than merely recorded.
+      scale = Curves.easeOutBack.transform(placeProgress.clamp(0.0, 1.0));
+    }
+
+    if (_isSolved) {
+      // Victory: the stars settle one after another rather than all at once.
+      final order = stars.indexOf(index);
+      final start = stars.isEmpty ? 0.0 : (order / stars.length) * 0.6;
+      final local = ((winProgress - start) / 0.4).clamp(0.0, 1.0);
+      scale = 1 + 0.18 * math.sin(local * math.pi);
+    }
+
+    final radius = cell * 0.32 * scale;
+    if (radius <= 0) {
+      return;
+    }
+
     final path = Path();
     const points = 5;
     final inner = radius * 0.42;
     for (var i = 0; i < points * 2; i++) {
       final r = i.isEven ? radius : inner;
       final angle = -math.pi / 2 + i * math.pi / points;
-      final point =
-          Offset(centre.dx + r * math.cos(angle), centre.dy + r * math.sin(angle));
+      final point = Offset(
+          centre.dx + r * math.cos(angle), centre.dy + r * math.sin(angle));
       if (i == 0) {
         path.moveTo(point.dx, point.dy);
       } else {
@@ -163,19 +239,20 @@ class StarBattlePainter extends CustomPainter {
       }
     }
     path.close();
+
     canvas.drawPath(
       path,
       Paint()
-        ..color = isSolved ? success : ink
+        ..color = _isSolved
+            ? Color.lerp(palette.ink, palette.success, winProgress)!
+            : palette.ink
         ..style = PaintingStyle.fill,
     );
   }
 
-  /// A light, thin cross. Small and grey against the star's large solid black:
-  /// the two differ in size, weight and fill, not just in shape.
   void _paintCross(Canvas canvas, Offset centre, double radius) {
     final paint = Paint()
-      ..color = markGrey
+      ..color = palette.markGrey
       ..strokeWidth = math.max(1.6, radius * 0.26)
       ..strokeCap = StrokeCap.round;
     canvas.drawLine(centre.translate(-radius, -radius),
@@ -184,21 +261,35 @@ class StarBattlePainter extends CustomPainter {
         centre.translate(-radius, radius), paint);
   }
 
-  @override
-  bool shouldRepaint(StarBattlePainter oldDelegate) =>
-      oldDelegate.isSolved != isSolved ||
-      oldDelegate.puzzle != puzzle ||
-      !_sameCells(oldDelegate.cells, cells);
+  /// Rings enter and then hold still. No pulse, no breathing: a player staring
+  /// at a board to think does not need something flickering at the edge of
+  /// vision for however many minutes the mistake survives.
+  void _paintConflicts(Canvas canvas, int n, double cell) {
+    if (conflicts.isEmpty || conflictProgress <= 0) {
+      return;
+    }
+    final t = Curves.easeOutBack.transform(conflictProgress.clamp(0.0, 1.0));
+    final paint = Paint()
+      ..color = palette.danger
+      ..strokeWidth = math.max(2.0, cell * 0.055)
+      ..style = PaintingStyle.stroke;
 
-  static bool _sameCells(List<CellState> a, List<CellState> b) {
-    if (a.length != b.length) {
-      return false;
+    for (final index in conflicts) {
+      final row = index ~/ n;
+      final col = index % n;
+      final centre = Offset(col * cell + cell / 2, row * cell + cell / 2);
+      canvas.drawCircle(centre, cell * 0.40 * t, paint);
     }
-    for (var i = 0; i < a.length; i++) {
-      if (a[i] != b[i]) {
-        return false;
-      }
-    }
-    return true;
   }
+
+  @override
+  bool shouldRepaint(StarBattlePainter old) =>
+      !identical(old.grid, grid) ||
+      old.palette != palette ||
+      old.placeProgress != placeProgress ||
+      old.placedCell != placedCell ||
+      old.conflictProgress != conflictProgress ||
+      old.winProgress != winProgress ||
+      !setEquals(old.blocked, blocked) ||
+      !setEquals(old.conflicts, conflicts);
 }

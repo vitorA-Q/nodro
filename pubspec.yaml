@@ -73,6 +73,19 @@ flutter:
   assets:
     - assets/bank/
 
+  # Atkinson Hyperlegible, bundled rather than fetched: rule R3 forbids any
+  # network dependency at runtime, so a font CDN is not an option.
+  #
+  # Licence: SIL Open Font License 1.1, Copyright 2020 Braille Institute of
+  # America, Inc. The OFL requires the licence text to travel with the font;
+  # it ships at assets/fonts/OFL.txt.
+  fonts:
+    - family: AtkinsonHyperlegible
+      fonts:
+        - asset: assets/fonts/AtkinsonHyperlegible-Regular.ttf
+        - asset: assets/fonts/AtkinsonHyperlegible-Bold.ttf
+          weight: 700
+
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/to/resolution-aware-images
 

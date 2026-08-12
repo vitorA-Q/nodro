@@ -27,9 +27,17 @@ class AppLocalizationsPt extends AppLocalizations {
   String get difficultyExtreme => 'Extremo';
 
   @override
-  String boardSummary(int size, int stars) {
-    return '$size×$size · $stars estrela por linha, coluna e região';
+  String headerLine(String name, int size, String difficulty) {
+    return '$name · $size×$size · $difficulty';
   }
+
+  @override
+  String ruleLine(int stars) {
+    return '$stars estrela por linha, coluna e região · estrelas nunca se tocam, nem na diagonal';
+  }
+
+  @override
+  String get tapHint => 'Toque numa célula: vazio → estrela → X';
 
   @override
   String starsPlaced(int placed, int total) {

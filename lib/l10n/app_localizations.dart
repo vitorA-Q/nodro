@@ -110,7 +110,7 @@ abstract class AppLocalizations {
   /// **'Star Battle'**
   String get starBattleName;
 
-  /// Difficulty label shown to the player. The four labels map onto internal technique tiers 1..7; only the label is translated, the tier is what gets stored.
+  /// Player-facing difficulty label. The four labels map onto internal technique tiers 1..7; only the label is translated, and only the tier is ever stored.
   ///
   /// In en, this message translates to:
   /// **'Easy'**
@@ -134,13 +134,25 @@ abstract class AppLocalizations {
   /// **'Extreme'**
   String get difficultyExtreme;
 
-  /// One-line description of the board rules currently in play.
+  /// Compact band above the board.
   ///
   /// In en, this message translates to:
-  /// **'{size}×{size} · {stars} star per row, column and region'**
-  String boardSummary(int size, int stars);
+  /// **'{name} · {size}×{size} · {difficulty}'**
+  String headerLine(String name, int size, String difficulty);
 
-  /// Progress counter above the board.
+  /// The rules of the puzzle, always visible.
+  ///
+  /// In en, this message translates to:
+  /// **'{stars} star per row, column and region · stars never touch, not even diagonally'**
+  String ruleLine(int stars);
+
+  /// Explains the input cycle. Always visible in stage A, since there is no tutorial yet.
+  ///
+  /// In en, this message translates to:
+  /// **'Tap a cell: empty → star → cross'**
+  String get tapHint;
+
+  /// Progress counter.
   ///
   /// In en, this message translates to:
   /// **'{placed} of {total} stars'**
@@ -152,13 +164,13 @@ abstract class AppLocalizations {
   /// **'Solved!'**
   String get solvedMessage;
 
-  /// Shown while the puzzle bank asset is being read.
+  /// No description provided for @loadingBank.
   ///
   /// In en, this message translates to:
   /// **'Loading puzzle…'**
   String get loadingBank;
 
-  /// Shown when the bank asset is missing or malformed.
+  /// No description provided for @loadFailed.
   ///
   /// In en, this message translates to:
   /// **'Could not load the puzzle bank.'**

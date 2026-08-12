@@ -13,7 +13,7 @@
 
   "difficultyEasy": "Easy",
   "@difficultyEasy": {
-    "description": "Difficulty label shown to the player. The four labels map onto internal technique tiers 1..7; only the label is translated, the tier is what gets stored."
+    "description": "Player-facing difficulty label. The four labels map onto internal technique tiers 1..7; only the label is translated, and only the tier is ever stored."
   },
   "difficultyMedium": "Medium",
   "@difficultyMedium": {},
@@ -22,18 +22,32 @@
   "difficultyExtreme": "Extreme",
   "@difficultyExtreme": {},
 
-  "boardSummary": "{size}×{size} · {stars} star per row, column and region",
-  "@boardSummary": {
-    "description": "One-line description of the board rules currently in play.",
+  "headerLine": "{name} · {size}×{size} · {difficulty}",
+  "@headerLine": {
+    "description": "Compact band above the board.",
     "placeholders": {
+      "name": { "type": "String" },
       "size": { "type": "int" },
+      "difficulty": { "type": "String" }
+    }
+  },
+
+  "ruleLine": "{stars} star per row, column and region · stars never touch, not even diagonally",
+  "@ruleLine": {
+    "description": "The rules of the puzzle, always visible.",
+    "placeholders": {
       "stars": { "type": "int" }
     }
   },
 
+  "tapHint": "Tap a cell: empty → star → cross",
+  "@tapHint": {
+    "description": "Explains the input cycle. Always visible in stage A, since there is no tutorial yet."
+  },
+
   "starsPlaced": "{placed} of {total} stars",
   "@starsPlaced": {
-    "description": "Progress counter above the board.",
+    "description": "Progress counter.",
     "placeholders": {
       "placed": { "type": "int" },
       "total": { "type": "int" }
@@ -46,12 +60,8 @@
   },
 
   "loadingBank": "Loading puzzle…",
-  "@loadingBank": {
-    "description": "Shown while the puzzle bank asset is being read."
-  },
+  "@loadingBank": {},
 
   "loadFailed": "Could not load the puzzle bank.",
-  "@loadFailed": {
-    "description": "Shown when the bank asset is missing or malformed."
-  }
+  "@loadFailed": {}
 }

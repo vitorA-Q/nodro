@@ -9,7 +9,9 @@
   "difficultyHard": "Difícil",
   "difficultyExtreme": "Extremo",
 
-  "boardSummary": "{size}×{size} · {stars} estrela por linha, coluna e região",
+  "headerLine": "{name} · {size}×{size} · {difficulty}",
+  "ruleLine": "{stars} estrela por linha, coluna e região · estrelas nunca se tocam, nem na diagonal",
+  "tapHint": "Toque numa célula: vazio → estrela → X",
   "starsPlaced": "{placed} de {total} estrelas",
   "solvedMessage": "Resolvido!",
   "loadingBank": "Carregando puzzle…",

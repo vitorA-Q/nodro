@@ -125,6 +125,36 @@ These were decided by the user in Phase 0. Do not re-litigate them.
   milestone-1 scope and sits in `BACKLOG.md` with the current performance analysis.
   **The engine's definition of done is Layer 1 passing against the bank — not the 300 ms.**
 
+## W8 — No UI stage is done without an end-to-end test that asserts on PIXELS
+
+Every interface stage needs a test that walks the complete user path and checks what was
+**drawn**, by capturing the board's own `RepaintBoundary` and reading the colour of the
+cells. Not the counter, not the widget tree, not the painter re-rendered by the test.
+
+This rule was bought with a shipped bug. Stage A had four elaborate accessibility tests and
+none that checked whether tapping produced a star. It did not: one mutable cell list was
+shared between frames, so `shouldRepaint` compared an object with itself, always answered
+no, and the canvas never repainted. Taps registered, the counter climbed to "6 of 6", the
+board stayed blank. The test suite was green throughout, because the counter is a plain
+Text rebuilt by setState.
+
+The trap has a second floor. The first rewrite of that test re-rendered the painter itself
+into a fresh canvas — and passed against a painter hard-wired to `shouldRepaint => false`.
+Proving a painter *could* draw is not proving the screen *did*. Capture the live boundary.
+
+**An elaborate test never substitutes for the obvious one.**
+
+## Fonts
+
+Atkinson Hyperlegible, bundled at `assets/fonts/` — no network at runtime (R3). Chosen
+because its design thesis is this project's thesis: the Braille Institute drew it so similar
+glyphs cannot be confused.
+
+**Licence: SIL Open Font License 1.1**, Copyright 2020 Braille Institute of America, Inc.
+The OFL requires the licence text to travel with the font; it ships at
+`assets/fonts/OFL.txt`. No in-app attribution is required, and the reserved font name may
+not be used for a modified version.
+
 ## W7 — No optimisation without measurement
 
 No performance change may be committed without a before-and-after number **in the same commit
