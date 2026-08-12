@@ -16,32 +16,46 @@ import 'rules.dart';
 ///
 /// Nothing leaves this class without passing the exhaustive solver (X2) and the
 /// human solver (PROP-2).
+///
+/// ## PROP-6 (minimality) is NOT APPLICABLE to Star Battle
+///
+/// This is a recorded decision, not an omission and not deferred work.
+///
+/// Star Battle has no removable clues: the region partition IS the clue. The
+/// substitute originally proposed — that no single cell may change region and
+/// still leave a uniquely solvable puzzle — was implemented and then measured,
+/// and the measurement killed it. From `tool/diagnose.dart`, over 48 generated
+/// puzzles across three sizes:
+///
+/// | board     | legal boundary moves | still unique | fully rigid |
+/// |-----------|---------------------|--------------|-------------|
+/// | 6x6 / 1   | 26.5 per puzzle     | 62.6%        | 0 of 25     |
+/// | 8x8 / 1   | 44.5 per puzzle     | 63.6%        | 0 of 15     |
+/// | 9x9 / 2   | 56.1 per puzzle     | 71.7%        | 0 of 8      |
+///
+/// Roughly two thirds of legal single-cell region changes leave the puzzle
+/// still uniquely solvable, and no puzzle is rigid. Enabling the gate made
+/// generation fail after 4,000 consecutive attempts on a 6x6 board.
+///
+/// The reason is structural, not a weak generator: a cell deep inside a region,
+/// far from any star, carries no information at all, so moving it between
+/// regions cannot change any deduction. Star Battle behaves like Shikaku here —
+/// there is no meaningful clue-removal analogue to test.
+///
+/// **What guards against a flabby puzzle instead is the two-sided PROP-3**
+/// (decision D4): a puzzle is only labelled tier `d` if the human solver
+/// succeeds with techniques up to `d` AND fails with techniques up to `d - 1`.
+/// That makes the hardest technique provably *required*, not merely used.
 class StarBattleGenerator
     implements PuzzleGenerator<StarBattlePuzzle, StarBattleSolution> {
   StarBattleGenerator({
     required this.size,
     required this.starsPerUnit,
     this.maxAttempts = 4000,
-    this.enforceBoundaryRigidity = false,
   });
 
   final int size;
   final int starsPerUnit;
-
-  /// Whether to require PROP-6-SB (full boundary rigidity) before accepting.
-  ///
-  /// DEFAULTS TO FALSE, and that is a finding, not a shortcut. Turning it on
-  /// makes generation fail outright: 4,000 consecutive attempts on a 6x6 board
-  /// produced no layout in which EVERY legal single-cell region change destroys
-  /// uniqueness. Requiring all of roughly 40-100 independent boundary moves to
-  /// break the puzzle is a far stronger condition than it sounds, and appears to
-  /// be effectively unsatisfiable — the same shape of problem the research found
-  /// for Tents (literal PROP-6 provably impossible) and Shikaku (vacuous).
-  ///
-  /// The flag is kept so the claim stays measurable rather than anecdotal. See
-  /// `tool/diagnose.dart` for the slack distribution, and PROGRESS.md for the
-  /// open question this raises about how PROP-6 should be defined here.
-  final bool enforceBoundaryRigidity;
 
   /// Fails loudly rather than returning something unverified (X1). A generator
   /// that exhausts this budget is a real defect worth surfacing, not a case to
@@ -94,15 +108,8 @@ class StarBattleGenerator
       if (_oracle.countSolutions(puzzle) != SolutionCount.unique) {
         continue;
       }
-      // PROP-6-SB (decision D5). Star Battle has no removable clues — the region
-      // partition IS the clue — so the agreed substitute for minimality is that
-      // the layout carries no slack: no single cell may change region and still
-      // leave a legal, uniquely solvable puzzle. Refinement stops at the first
-      // unique layout it reaches, which is frequently NOT rigid, so this has to
-      // be an explicit acceptance gate rather than something we hope falls out.
-      if (enforceBoundaryRigidity && !isBoundaryRigid(regionOfCell)) {
-        continue;
-      }
+      // NOTE: there is deliberately no minimality gate here. See the PROP-6
+      // note in the class doc comment.
       final tier = _humanSolver.rateDifficulty(puzzle);
       if (tier == null) {
         continue; // needs guessing — outside the declared envelope (PROP-2)
@@ -224,42 +231,6 @@ class StarBattleGenerator
       columns.add(index);
     }
     return columns;
-  }
-
-  // ------------------------------------------------------------- PROP-6-SB
-
-  /// Whether no single cell can change region and still leave a legal, uniquely
-  /// solvable puzzle.
-  ///
-  /// Exits on the first violation found: one counter-example is enough to prove
-  /// the layout has slack, and the caller only needs the yes/no.
-  bool isBoundaryRigid(List<int> owner) {
-    final cellCount = size * size;
-    for (var cell = 0; cell < cellCount; cell++) {
-      final from = owner[cell];
-      for (final to in _orthogonalNeighbours(cell)
-          .map((neighbour) => owner[neighbour])
-          .toSet()) {
-        if (to == from) {
-          continue;
-        }
-        final variant = List<int>.from(owner)..[cell] = to;
-        final altered = StarBattlePuzzle(
-          size: size,
-          starsPerUnit: starsPerUnit,
-          regionOfCell: variant,
-        );
-        // An illegal layout — empty or disconnected region — is not a puzzle at
-        // all, so it cannot demonstrate slack.
-        if (_validator.puzzleViolations(altered).isNotEmpty) {
-          continue;
-        }
-        if (_oracle.countSolutions(altered) == SolutionCount.unique) {
-          return false;
-        }
-      }
-    }
-    return true;
   }
 
   // ------------------------------------------------------ uniqueness refining

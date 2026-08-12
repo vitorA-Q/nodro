@@ -308,21 +308,41 @@ explicitamente que eu declare onde não se aplica e por quê. Segue a declaraç�
 |---|---|---|
 | Slitherlink | **Sim, plenamente** | Por construção: o gerador só para de remover quando nenhuma remoção adicional preserva a unicidade. O teste apenas reconfirma. |
 | Tents & Trees | **Sim, mas nunca no formato literal** ⚠️ corrigido | Dois números são *provadamente* redundantes em todo Tents. Aplicar com a correção descrita abaixo. |
-| Star Battle | **Não se aplica literalmente** | Não existem pistas discretas: a pista é a partição em regiões, que é uma peça só. Substituição proposta abaixo. |
+| Star Battle | **NÃO SE APLICA — fechado por medição** ⚠️ corrigido | Não existem pistas discretas, e o substituto que eu propus foi medido e reprovado. O PROP-3 dos dois lados é o guardião. Ver abaixo. |
 | Shikaku | **Não se aplica, e minha primeira substituição era inútil** ⚠️ corrigido | Substituição nova proposta abaixo. |
 
-### Star Battle — por que não se aplica, e o que colocar no lugar
+### Star Battle — ⚠️ FECHADO: PROP-6 NÃO SE APLICA
 
 Não há o que remover. Você não pode "tirar uma pista" de um Star Battle; o desenho das
 regiões é indivisível. Tirar uma linha de fronteira funde duas regiões e muda as regras do
 puzzle (passa a ter N-1 regiões), não o enfraquece.
 
-**Substituição — PROP-6-SB (minimalidade de fronteira):** para toda fronteira entre duas
-regiões vizinhas, mover qualquer célula de um lado para o outro ou (a) quebra a
-conectividade da região, ou (b) muda a contagem de estrelas da região, ou (c) destrói a
-unicidade. Ou seja: o desenho é *localmente rígido* — não existe variação de uma célula que
-produza outro puzzle válido e igualmente único. Isso é testável, é rigoroso e captura o
-espírito de "sem gordura".
+**Eu propus um substituto e ele estava errado.** A proposta era: *"o desenho é localmente
+rígido — nenhuma célula pode mudar de região sem destruir a unicidade"*. Implementei e medi
+(`dart run tool/diagnose.dart`), sobre 48 puzzles em três tamanhos:
+
+| Tamanho | Movimentos legais | Que mantêm a unicidade | Puzzles rígidos |
+|---|---|---|---|
+| 6x6 / 1 estrela | 26,5 | mediana 16 — **62,6%** | **0 de 25** |
+| 8x8 / 1 estrela | 44,5 | mediana 27 — **63,6%** | **0 de 15** |
+| 9x9 / 2 estrelas | 56,1 | mediana 42 — **71,7%** | **0 de 8** |
+
+Cerca de dois terços das mudanças de fronteira preservam a unicidade, e **nenhum** puzzle é
+rígido. Ligar a exigência no gerador o fez desistir depois de 4.000 tentativas num 6x6.
+
+**A razão é estrutural, não é gerador fraco:** uma célula no meio de uma região, longe de
+qualquer estrela, não carrega informação nenhuma. Trocá-la de região não muda dedução
+alguma. É o mesmo formato de problema que a pesquisa achou no Shikaku.
+
+**Decisão, aprovada em 12/08/2026: PROP-6 é NÃO APLICÁVEL ao Star Battle.** Não é dívida,
+não é "pulado", não é para revisitar sem dado novo.
+
+**Quem protege contra puzzle frouxo é o PROP-3 dos dois lados:** o puzzle só recebe o rótulo
+T4 se resolve com técnicas até T4 **e falha** com técnicas até T3. Isso torna a técnica mais
+difícil *obrigatória*, não decorativa — que é exatamente o que "sem gordura" deveria
+significar aqui. Existe um teste dedicado que verifica que essa reprovação acontece de
+verdade, e que exige que a maioria dos puzzles esteja acima do tier 1, para a garantia não
+passar por vacuidade.
 
 ### Shikaku — ⚠️ CORREÇÃO: minha primeira proposta era inútil
 

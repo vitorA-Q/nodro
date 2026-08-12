@@ -67,10 +67,22 @@ These were decided by the user in Phase 0. Do not re-litigate them.
   five names later is a one-file change.
 - **D4 — PROP-3 is two-sided.** A puzzle is difficulty `d` iff the human solver succeeds
   with techniques up to `d` AND fails with techniques up to `d−1`.
-- **D5 — PROP-6 per type.** Slitherlink: applies fully. Star Battle: not applicable, replaced
-  by boundary rigidity. Shikaku: not applicable, replaced by value-erasure minimality. Tents:
-  applies modulo the two sum identities (one row clue and one column clue are always derivable
-  and are excluded from the test). See `planning.md` section (d).
+- **D5 — PROP-6 per type.**
+  - **Star Battle: NOT APPLICABLE. Decided, closed, do not re-open without new data.**
+    The region partition IS the clue, so nothing can be removed. The proposed substitute —
+    boundary rigidity, "no single cell may change region and still leave a uniquely solvable
+    puzzle" — was implemented and measured, and the measurement killed it: 62.6% / 63.6% /
+    71.7% of legal boundary moves preserve uniqueness on 6x6 / 8x8 / 9x9, and **0 of 48
+    puzzles were rigid**. Enabling the gate made generation fail after 4,000 consecutive
+    attempts on a 6x6 board. A cell far from any star carries no information, so moving it
+    between regions changes no deduction. Reproduce with `dart run tool/diagnose.dart`.
+    **The two-sided PROP-3 (D4) is the official guard against a flabby Star Battle puzzle.**
+  - Slitherlink: applies fully, by greedy clue removal.
+  - Shikaku: not applicable; replaced by value-erasure minimality.
+  - Tents: applies modulo the two sum identities (one row clue and one column clue are always
+    derivable and are excluded from the test).
+
+  See `planning.md` section (d).
 - **D6 — Star Battle sizes.** 6x6 (1 star), 8x8 (1), 9x9 (2), 10x10 (2).
 - **D7 — Monetization shape.** Free: every puzzle type, unlimited puzzles, daily challenge,
   1 free hint per puzzle, ads. Pro (one-time): unlimited hints, no ads, technique library and

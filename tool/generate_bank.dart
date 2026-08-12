@@ -38,6 +38,11 @@ Future<void> main(List<String> args) async {
   // so the small boards hit the size cap in seconds while the large ones would
   // run for days trying to. Both limits are enforced, whichever comes first.
   final maxMinutes = _intArg(args, '--max-minutes') ?? 45;
+  // Without a count cap the cheap boards would eat their whole byte budget:
+  // a 6x6 puzzle is small and fast, so 768 KB of them is roughly 64,000 — far
+  // more than any player needs, and wildly out of balance with the large boards
+  // the same budget only buys a few hundred of.
+  final maxPerSize = _intArg(args, '--max-per-size') ?? 1500;
   final cores = Platform.numberOfProcessors;
   final perConfigBudgetBytes = (budgetKb * 1024) ~/ _configs.length;
 
@@ -65,6 +70,7 @@ Future<void> main(List<String> args) async {
       cores: cores,
       gzipBudgetBytes: perConfigBudgetBytes,
       timeLimit: Duration(minutes: maxMinutes),
+      maxPuzzles: maxPerSize,
     );
     stopwatch.stop();
 
@@ -105,6 +111,7 @@ Future<List<String>> _buildConfig({
   required int cores,
   required int gzipBudgetBytes,
   required Duration timeLimit,
+  required int maxPuzzles,
 }) async {
   final collected = <String>[];
   var nextSeed = size * 1000003 + stars * 101;
@@ -131,6 +138,11 @@ Future<List<String>> _buildConfig({
       while (collected.isNotEmpty &&
           gzip.encode(utf8.encode(collected.join('\n'))).length >
               gzipBudgetBytes) {
+        collected.removeLast();
+      }
+    } else if (collected.length >= maxPuzzles) {
+      done = true;
+      while (collected.length > maxPuzzles) {
         collected.removeLast();
       }
     } else if (clock.elapsed >= timeLimit) {

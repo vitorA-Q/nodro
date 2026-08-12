@@ -1,5 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:nodro/engine/core/technique_tier.dart';
 import 'package:nodro/engine/puzzles/star_battle/generator.dart';
+import 'package:nodro/engine/puzzles/star_battle/human_solver.dart';
 
 import 'prop_checks.dart';
 
@@ -38,24 +40,42 @@ void main() {
     });
   }
 
-  test('6x6 — PROP-6-SB boundary rigidity on fresh puzzles', () {
-    final generator = StarBattleGenerator(size: 6, starsPerUnit: 1);
-    for (var i = 0; i < 5; i++) {
-      final generated = generator.generate(781000 + i);
-      verifyBoundaryRigidity(generated.puzzle,
-          label: '6x6 seed ${generated.seed}');
+  // PROP-6 has no Star Battle analogue and is deliberately not tested here.
+  // See the note at the top of prop_checks.dart for the measurement that
+  // settled it. The test below is what replaces it.
+
+  test('PROP-3 two-sided actually bites — the label is earned, not decorative',
+      () {
+    // The whole value of the two-sided rating is that it REJECTS. If every
+    // puzzle also solved one tier lower, the labels would be noise and this
+    // check would be passing vacuously. So assert both directions explicitly:
+    // the harder tier solves, the easier tier fails, and the corpus genuinely
+    // contains puzzles above tier 1.
+    final solver = StarBattleHumanSolver();
+    final generator = StarBattleGenerator(size: 8, starsPerUnit: 1);
+
+    var aboveTierOne = 0;
+    for (var i = 0; i < 25; i++) {
+      final generated = generator.generate(783000 + i);
+      final tier = generated.tier;
+
+      expect(solver.solve(generated.puzzle, maxTier: tier).isSolved, isTrue,
+          reason: 'seed ${generated.seed}: does not solve at its own tier');
+
+      if (tier.level > 1) {
+        aboveTierOne++;
+        final easier = TechniqueTier.fromLevel(tier.level - 1);
+        expect(solver.solve(generated.puzzle, maxTier: easier).isSolved, isFalse,
+            reason: 'seed ${generated.seed}: labelled T${tier.level} but also '
+                'solves at T${easier.level} — the label overstates it');
+      }
     }
-  },
-      skip: 'BLOCKED ON A PRODUCT DECISION, not weakened. The PROP-6-SB '
-          'definition (no single cell may change region and still leave a '
-          'uniquely solvable puzzle) is not merely hard to satisfy, it is '
-          'structurally wrong: dart run tool/diagnose.dart measures 63% of '
-          'legal boundary moves preserving uniqueness, and 0 of 48 generated '
-          'puzzles across three sizes are fully rigid. Enabling the gate in '
-          'the generator makes it fail after 4,000 consecutive attempts on a '
-          '6x6 board. Star Battle appears to have no meaningful clue-removal '
-          'analogue, like Shikaku. Awaiting the decision recorded in '
-          'PROGRESS.md before this test is rewritten or retired.');
+
+    expect(aboveTierOne, greaterThan(10),
+        reason: 'only $aboveTierOne of 25 puzzles are above tier 1, so the '
+            'lower-bound half of PROP-3 is barely exercised and the guarantee '
+            'is close to vacuous');
+  });
 
   test('generation is reproducible from a seed', () {
     // The whole harness rests on this: without it a failure at sample 837

@@ -14,6 +14,19 @@ import 'package:nodro/engine/puzzles/star_battle/serializer.dart';
 /// Shared by all three test layers so that a puzzle from the shipped bank and a
 /// puzzle generated seconds ago are held to exactly the same standard. If these
 /// ever diverge, one of the layers is quietly weaker than it looks.
+///
+/// ## PROP-6 is NOT APPLICABLE to Star Battle — decided, not deferred
+///
+/// There is no minimality check here and there should not be one. Star Battle
+/// has no removable clues: the region partition IS the clue. The proposed
+/// substitute (no single cell may change region and still leave a uniquely
+/// solvable puzzle) was implemented and measured: 62.6% / 63.6% / 71.7% of legal
+/// boundary moves preserve uniqueness on 6x6 / 8x8 / 9x9, and 0 of 48 puzzles
+/// were rigid. A cell far from any star carries no information, so moving it
+/// changes no deduction. Same conclusion the research reached for Shikaku.
+///
+/// **The two-sided PROP-3 below is the official guard against a flabby puzzle**
+/// (decision D4). Reproduce the measurement with `dart run tool/diagnose.dart`.
 const StarBattleExhaustiveSolver oracle = StarBattleExhaustiveSolver();
 const StarBattleValidator validator = StarBattleValidator();
 const StarBattleSerializer serializer = StarBattleSerializer();
@@ -29,7 +42,6 @@ void verifyPuzzle(
   required TechniqueTier expectedTier,
   required String label,
   StarBattleSolution? knownSolution,
-  bool checkRigidity = false,
 }) {
   // ---------------------------------------------------------------- PROP-1
   expect(oracle.countSolutions(puzzle), SolutionCount.unique,
@@ -117,63 +129,5 @@ void verifyPuzzle(
   expect(serializer.serializeBoard(progressBack), progressText,
       reason: 'PROP-5 [$label]: progress did not survive the round trip');
 
-  // -------------------------------------------------------------- PROP-6-SB
-  if (checkRigidity) {
-    verifyBoundaryRigidity(puzzle, label: label);
-  }
-}
-
-/// PROP-6-SB — boundary rigidity (decision D5).
-///
-/// Star Battle has no removable clues: the region partition IS the clue. The
-/// agreed substitute is that the layout carries no slack — no single cell may
-/// change region and still leave a legal, uniquely solvable puzzle.
-void verifyBoundaryRigidity(StarBattlePuzzle puzzle, {required String label}) {
-  final size = puzzle.size;
-  final owner = List<int>.from(puzzle.regionOfCell);
-  var testedMoves = 0;
-
-  for (var cell = 0; cell < size * size; cell++) {
-    for (final target in _adjacentRegions(owner, cell, size)) {
-      final variant = List<int>.from(owner)..[cell] = target;
-      final altered = StarBattlePuzzle(
-        size: size,
-        starsPerUnit: puzzle.starsPerUnit,
-        regionOfCell: variant,
-      );
-      if (validator.puzzleViolations(altered).isNotEmpty) {
-        continue; // illegal layout — rigidity holds trivially for this move
-      }
-      testedMoves++;
-      expect(oracle.countSolutions(altered), isNot(SolutionCount.unique),
-          reason: 'PROP-6-SB [$label]: moving ${puzzle.cellRefOf(cell)} from '
-              'region ${owner[cell] + 1} to region ${target + 1} leaves '
-              'another uniquely solvable puzzle, so the layout has slack');
-    }
-  }
-
-  expect(testedMoves, greaterThan(0),
-      reason: 'PROP-6-SB [$label]: no boundary move was testable, so the '
-          'property passed vacuously');
-}
-
-List<int> _adjacentRegions(List<int> owner, int cell, int size) {
-  final row = cell ~/ size;
-  final col = cell % size;
-  final result = <int>[];
-  void consider(int r, int c) {
-    if (r < 0 || r >= size || c < 0 || c >= size) {
-      return;
-    }
-    final region = owner[r * size + c];
-    if (region != owner[cell] && !result.contains(region)) {
-      result.add(region);
-    }
-  }
-
-  consider(row - 1, col);
-  consider(row + 1, col);
-  consider(row, col - 1);
-  consider(row, col + 1);
-  return result;
+  // PROP-6 — intentionally absent. See the class-level note above.
 }

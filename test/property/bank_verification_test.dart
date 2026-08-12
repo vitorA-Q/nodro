@@ -53,16 +53,8 @@ void main() {
         }
       });
 
-      test('PROP-6-SB — boundary rigidity on a sample', () {
-        final sampleSize = entries.length < 8 ? entries.length : 8;
-        for (var i = 0; i < sampleSize; i++) {
-          verifyBoundaryRigidity(entries[i].puzzle, label: '$name#$i');
-        }
-      },
-          skip: 'BLOCKED ON A PRODUCT DECISION, not weakened. Measured: 63% of '
-              'legal single-cell region changes leave the puzzle still '
-              'uniquely solvable, and 0 of 48 generated puzzles are fully '
-              'rigid. See tool/diagnose.dart and PROGRESS.md.');
+      // PROP-6 has no Star Battle analogue — decided, not deferred. See the
+      // note at the top of prop_checks.dart.
 
       test('stored tiers cover more than one difficulty', () {
         final tiers = entries.map((entry) => entry.tier.level).toSet();

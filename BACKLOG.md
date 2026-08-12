@@ -101,3 +101,20 @@ Hipóteses ainda não testadas, para quando o modo infinito for prioridade:
   as contagens de coluna e região são arrays de int).
 - Começar de um traçado de regiões já mais restrito, em vez de crescer e depois consertar.
 - Gerar em segundo plano com folga, escondendo a latência atrás da fila de puzzles do jogador.
+## Revisitar se houver reclamação de jogador
+
+- **Star Battle com "espaço morto".** PROP-6 foi declarado não aplicável ao Star Battle em
+  12/08/2026, com medição: 63% a 72% das mudanças de fronteira preservam a unicidade e nenhum
+  puzzle é rígido. A conclusão é que célula longe de estrela não carrega informação, e isso é
+  propriedade do gênero. **Se aparecer reclamação real de jogador** dizendo que os puzzles têm
+  regiões grandes e sem graça, ou "muito espaço que não faz nada", revisitar com dado real de
+  uso — não com teoria. O ponto de partida seria medir a distribuição de tamanho de região e a
+  distância média entre estrelas nos puzzles reclamados.
+
+## Otimização do gerador — fora do caminho crítico
+
+- **Bitmask de 64 bits para contagens de coluna e região no oráculo.** É a única das três
+  hipóteses de velocidade que ainda não foi testada (as outras duas já estavam implementadas:
+  busca por linha com posicionamentos pré-computados, e solução-primeiro). Fora do Marco 1 por
+  decisão: o banco é gerado uma vez no PC e o jogador nunca espera, então um gerador 3x mais
+  rápido não muda nada no lançamento.
