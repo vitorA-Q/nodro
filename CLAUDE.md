@@ -1,0 +1,211 @@
+# DEDUCE — Project Memory
+
+Read this before touching anything. It is the permanent contract for this repo.
+Full briefing: `docs/briefing.md`. Phase planning: `planning.md`. Status log: `PROGRESS.md`.
+
+## What this is
+
+A collection of combinatorial logic puzzles from the Nikoli family (Star Battle,
+Slitherlink, Shikaku, Tents & Trees, more later), built in Flutter for **web first**,
+then Android, then maybe iOS.
+
+## The three invariants (P1–P3)
+
+These define the product. No implementation decision may compromise them.
+
+**P1 — PROVEN UNIQUENESS.** Every puzzle shown to a player has exactly one solution,
+and that is *demonstrated* by an exhaustive solver, never assumed by the generator.
+
+**P2 — DIFFICULTY BY HUMAN TECHNIQUE.** Difficulty is the most advanced deduction
+technique the puzzle *requires*, determined by a human-simile solver. Not clue count,
+not brute-force time, not a statistical heuristic.
+
+**P3 — HINTS THAT TEACH.** The hint engine finds the simplest next valid deduction,
+names the technique, highlights the cells involved, and explains *why* the deduction
+is valid. A hint never reveals an answer without justifying the reasoning.
+
+If any decision threatens P1, P2 or P3 — stop and raise it with the user.
+
+## Why the tests are the product
+
+Anyone can generate a Slitherlink app with AI in a weekend. What they cannot generate
+is one whose puzzles are provably unique, because they do not know they need a
+verification oracle. The property-test harness is not engineering rigor — it is the
+competitive moat, and the one part competitors will not copy. **Never propose cutting
+tests to go faster.** If the user proposes it, warn them.
+
+## Correctness contract
+
+**C1** — No UI code before that phase's engine passes every property test. No exceptions,
+not even "just to visualize". (Repeated as X7 because it is the rule agents break most.)
+
+**C2** — For EACH puzzle type, at least 1,000 instances generated from fixed,
+reproducible seeds, tested against:
+
+- **PROP-1 (uniqueness)** — exactly one solution, verified by an independent exhaustive
+  solver that counts solutions with early exit on the second.
+- **PROP-2 (human solvability)** — solvable by the human-simile solver using only named
+  techniques, with zero guessing or backtracking steps.
+- **PROP-3 (difficulty consistency)** — the difficulty label equals the tier of the most
+  advanced technique the human solver needed. Deterministic.
+- **PROP-4 (technique soundness)** — no technique ever eliminates a value that belongs to
+  the true solution. Cross-check every deduction against the known solution. An unsound
+  technique is a critical bug, not a detail.
+- **PROP-5 (serialization)** — `serialize(deserialize(x)) == x` for every puzzle state and
+  every progress state.
+- **PROP-6 (minimality)** — removing any further clue breaks uniqueness. Declare the types
+  where this does not apply and why.
+
+**C3** — Two independent solvers per type:
+- `ExhaustiveSolver` — correct by construction, slow, is the **ORACLE**.
+- `HumanSolver` — applies named techniques by tier, is the **PRODUCT**.
+
+The HumanSolver is validated *against* the ExhaustiveSolver, never the reverse. If they
+disagree, the HumanSolver is wrong until proven otherwise.
+
+**C4** — When declaring a phase done, run and **paste the real output** of the commands
+below. Never write "the tests pass" — paste the output.
+
+## Commands
+
+```bash
+flutter --version
+dart analyze                  # must be zero issues
+flutter test                  # must be all green
+dart run tool/bench.dart      # phase performance numbers
+flutter build web --release
+```
+
+Flutter is not on PATH by default in this environment. It lives at `C:\flutter\bin`.
+Prefix shell sessions with: `$env:PATH = "C:\flutter\bin;" + $env:PATH`
+
+## Architecture rules (R1–R8)
+
+- **R1** — Stable Flutter, pure Dart. No Flame, no game engine. Puzzles are static grids:
+  `CustomPainter` + `RepaintBoundary` is enough.
+- **R2** — NEVER generate or solve a puzzle on the UI thread. Everything in an `Isolate`.
+  The app must never freeze.
+- **R3** — Zero network dependency at runtime. Must work in airplane mode.
+- **R4** — Each puzzle type is a self-contained module behind a common interface. Adding
+  the 15th type must not require touching the previous 14.
+- **R5** — The `engine/` layer is pure Dart and imports NOTHING from `package:flutter/`.
+  Structural rule: if the engine needs Flutter, the design is wrong. Enforced by a test.
+- **R6** — All visible text comes from `.arb` files via `gen_l10n`. Zero hardcoded strings
+  in the UI, including technique names and hint text.
+- **R7** — No `dynamic` in public API. No `late` without a comment justifying it.
+  `flutter_lints` with zero warnings.
+- **R8** — Anything that works on Android must work on web. If something cannot, raise it
+  BEFORE implementing, not after.
+
+## Layout
+
+```
+lib/
+  engine/                  pure Dart, ZERO flutter/ imports
+    core/                  puzzle_type.dart grid.dart deduction.dart solve_result.dart
+    puzzles/<type>/        model.dart rules.dart techniques/ human_solver.dart
+                           exhaustive_solver.dart generator.dart
+  data/                    puzzle_bank.dart progress_repository.dart
+  ui/                      painters/ screens/ widgets/
+  l10n/
+test/
+  property/                PROP-1..PROP-6 per type
+  golden/                  minimal failing instances, permanent regression
+  unit/
+tool/                      bench.dart generate_bank.dart
+web/                       per-type landing pages for SEO
+```
+
+Core contracts (names adaptable, semantics not):
+
+```dart
+abstract class PuzzleType<S extends PuzzleState> {
+  String get id;
+  PuzzleGenerator<S> get generator;
+  HumanSolver<S> get humanSolver;
+  ExhaustiveSolver<S> get exhaustiveSolver;
+  List<Technique<S>> get techniques;      // ordered by tier
+  RuleValidator<S> get validator;
+  PuzzleSerializer<S> get serializer;
+}
+
+abstract class Technique<S> {
+  String get id;                   // i18n key
+  TechniqueTier get tier;          // 1..7
+  List<Deduction> apply(S state);  // empty if not applicable
+}
+
+class Deduction {
+  final String techniqueId;
+  final List<CellRef> highlightedCells;      // what the hint highlights
+  final List<CellRef> affectedCells;         // what the deduction concludes
+  final Map<String, Object> explanationArgs; // interpolated into the .arb
+}
+```
+
+A typed `Deduction` is what makes P3 possible without hacks: a hint is not pasted text,
+it is the result of a real deduction.
+
+## Launch order (non-negotiable)
+
+1. Web (Flutter Web), published, with SEO
+2. Android (Google Play)
+3. iOS, only if the first two work
+
+Consequence: NOTHING may depend on a mobile-only plugin in Phases 0–4. The ads SDK enters
+only in Phase 6, behind an abstraction.
+
+## Monetization (Phase 6 only, in priority order)
+
+1. One-time "Pro" purchase (~US$4.99): unlimited hints, no ads, extra puzzle types. **Main
+   revenue line.**
+2. Rewarded ad for hints beyond the first free one, free tier only.
+3. Interstitial: max 1 per 2 completed puzzles. Never mid-puzzle. Never in a new user's
+   first 3 puzzles.
+4. Web display ads, only when traffic justifies it.
+
+## Forbidden anti-patterns (X1–X8)
+
+- **X1** — Fix the ROOT CAUSE. Never swallow an error in an empty catch, never return fake
+  fallback data, never loosen a test to make it pass. A failing property test means the
+  CODE is wrong, not the test.
+- **X2** — Never mark a puzzle valid without running it through the ExhaustiveSolver.
+- **X3** — Never implement a technique whose soundness you cannot justify in one sentence.
+- **X4** — Never use a timeout or iteration limit as a difficulty criterion.
+- **X5** — Never build a generic brute-force solver and call it a human solver.
+- **X6** — No new dependency without a one-sentence justification. Prefer the stdlib.
+- **X7** — No UI before the engine passes. (Same as C1. Repeated on purpose.)
+- **X8** — No recurring subscription, virtual currency, energy, lives, or loot boxes.
+
+## Work protocol (W1–W6)
+
+- **W1** — Plan Mode before any change touching multiple files.
+- **W2** — One logical unit at a time. Stub everything, show the list, then fill in one by
+  one. Do not dump 2,000 lines at once.
+- **W3** — Use a subagent for research, to keep the main context clean.
+- **W4** — Use a second-opinion subagent tasked with REFUTING each solver before the user
+  approves it. The author must not be the evaluator.
+- **W5** — `git commit` at logical checkpoints, with a descriptive message.
+- **W6** — At the end of each phase, write the summary in `PROGRESS.md`, in simple
+  Portuguese.
+
+## Communication rule (permanent)
+
+The user does not program. They will not read code, edit files, or fix anything by hand.
+Therefore, in EVERY reply:
+
+- Write the summary in **simple Portuguese**, no unexplained jargon.
+- When a decision is needed, present the options in plain language with the practical
+  consequence of each. Never ask them to choose between technical alternatives without
+  explaining what changes for the end user.
+- If a command fails, do not tell them to fix it. Diagnose and fix it yourself, then
+  explain in one sentence what it was.
+- `PROGRESS.md` is also written in simple Portuguese.
+- Code, variable names and comments stay in English. Only the conversation with the user
+  and `PROGRESS.md` are in Portuguese.
+
+## Non-goals
+
+Not building: a game engine, multiplayer, a backend, user accounts, a level editor,
+recurring subscriptions, or any live-ops economy. No iOS work until web and Android ship.
+No monetization code before Phase 6. No UI before the engine passes its tests.
