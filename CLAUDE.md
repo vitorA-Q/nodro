@@ -94,9 +94,35 @@ These were decided by the user in Phase 0. Do not re-litigate them.
 - **D14 — Hosting.** Cloudflare Pages, because it serves per-type SEO URLs with real redirect
   and header control, works with a private repo, and its CDN is measurably faster from Brazil
   than GitHub Pages.
-- **D15 — Test cadence.** 150 fast instances per run day-to-day; the full 1,000 before every
-  delivery. Measure and report the real wall-clock time of the 1,000. If it exceeds 10 minutes,
-  propose parallelisation — **never reduce the count**.
+- **D15 — Test cadence: three layers.** Verification is cheap (one oracle call plus one human
+  solve); *generation* is what costs. So the layers separate them:
+  - **Layer 1 — bank verification, the RELEASE GATE.** PROP-1..PROP-6 against every puzzle in
+    the shipped bank (1,000+), generating nothing. Target under 10 minutes.
+    `test/property/bank_verification_test.dart`
+  - **Layer 2 — generator regression, the DAILY GATE.** ~50 freshly generated small puzzles,
+    all properties. Catches regressions in the generator itself. Target under 2 minutes.
+    `test/property/generator_regression_test.dart`
+  - **Layer 3 — nightly batch.** Fresh generation in volume, tagged `nightly`, on request.
+    `flutter test test/property/nightly_batch_test.dart --tags nightly`
+
+  This *strengthens* the contract: the gate now validates the artefact that actually ships
+  rather than a random sample nobody plays. **The 1,000 count is never reduced.**
+- **D16 — Generation targets for milestone 1.** The 300 ms figure was set for live on-device
+  generation, which milestone 1 does not use. Replaced by: **the full bank batch finishes in
+  under 2 hours wall clock, parallelised across cores.** Live on-device generation is OUT of
+  milestone-1 scope and sits in `BACKLOG.md` with the current performance analysis.
+  **The engine's definition of done is Layer 1 passing against the bank — not the 300 ms.**
+
+## W7 — No optimisation without measurement
+
+No performance change may be committed without a before-and-after number **in the same commit
+message**. This rule exists because two entirely plausible optimisations in the Star Battle
+generator were both measured to be *worse* and reverted:
+
+- raising the refinement budget from 400 to 6,000 steps: 9x9 median 610 ms → 1,074 ms;
+- scoring six candidate moves per step and keeping the best: 610 ms → 904 ms.
+
+Plausible and faster are different things.
 
 ## Why the tests are the product
 

@@ -70,3 +70,34 @@ está em `docs/research/star_battle_techniques.md`.
 
 - A pasta antiga em `OneDrive\Área de Trabalho\deduce` ficou vazia porque a sessão que fez a
   mudança a mantinha aberta. Pode ser apagada manualmente a qualquer momento.
+
+## Geração ao vivo no dispositivo — FORA do marco 1
+
+Decisão D16. A meta original de 300 ms por puzzle foi definida para gerar puzzle na hora, no
+aparelho do jogador. O marco 1 não faz isso: usa banco pré-gerado em assets, construído uma vez
+no PC. Então a meta não bloqueia mais nada — mas a análise fica registrada aqui para quando o
+modo infinito entrar.
+
+Medições single-thread do gerador atual (Dart 3.12.2, mediana):
+
+| Tamanho | Mediana | Dentro dos 300 ms? |
+|---|---|---|
+| 6x6 / 1 estrela | 1,0 ms | sim |
+| 8x8 / 1 estrela | 4,3 ms | sim |
+| 9x9 / 2 estrelas | 610 ms | não |
+| 10x10 / 2 estrelas | 7.725 ms | não, 25x acima |
+
+O gargalo é o refinamento de unicidade, não a busca. O gerador já faz solução-primeiro (sorteia
+as estrelas antes das regiões, então a existência de solução é garantida por construção) e já faz
+busca linha a linha com posicionamentos pré-computados. O custo está em transformar um traçado de
+regiões qualquer num traçado com resposta única: layouts aleatórios são únicos ~1 vez em 300.
+
+Duas otimizações plausíveis foram testadas e **medidas como piores** (ver regra W7):
+- orçamento de refinamento de 400 para 6.000 passos: 610 ms → 1.074 ms
+- pontuar 6 movimentos candidatos e ficar com o melhor: 610 ms → 904 ms
+
+Hipóteses ainda não testadas, para quando o modo infinito for prioridade:
+- Bitmask de 64 bits para linhas, colunas e regiões no oráculo (hoje as linhas já são bitmask, mas
+  as contagens de coluna e região são arrays de int).
+- Começar de um traçado de regiões já mais restrito, em vez de crescer e depois consertar.
+- Gerar em segundo plano com folga, escondendo a latência atrás da fila de puzzles do jogador.

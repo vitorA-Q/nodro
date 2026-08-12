@@ -118,3 +118,62 @@ coisa. As perguntas estão no fim do `planning.md`, todas em português, com as 
 explicadas e a consequência prática de cada uma.
 
 Depois disso começa a Fase 1: o motor do Star Battle.
+
+---
+
+## Fase 1 — Motor do Star Battle 🔄 quase pronto
+
+**Data:** 12/08/2026
+
+### O que funciona
+
+Motor completo em Dart puro: núcleo, oráculo exaustivo, tabuleiro de trabalho, 9 técnicas
+nomeadas em 4 tiers, solver humano, gerador, serializador. Mais o gerador de banco paralelo.
+
+**PROP-1 a PROP-5 passam** em 50 puzzles gerados na hora (6x6, 8x8, 9x9). A camada 2 de testes
+roda em **6 segundos** — a meta era 2 minutos.
+
+### Dois bugs que a medição pegou
+
+1. **O oráculo se contradizia com o validador.** Dizia "sem solução" para 72 de 300 puzzles que
+   o validador confirmava resolvíveis. Causa: ao estourar uma cota ele parava de contar no meio,
+   mas o desfazer revertia a linha inteira. Contadores ficavam negativos e ramos válidos eram
+   podados.
+2. **Traçados de região sorteados são únicos ~1 vez em 300.** Sortear e testar não gera puzzle.
+   Trocado por refinamento dirigido: pedir a segunda solução ao oráculo e mover uma célula dela
+   para a região vizinha, o que a invalida por construção.
+
+### Duas otimizações que eu tentei e MEDI como piores
+
+Ambas revertidas, e viraram a regra W7 (nenhuma otimização entra sem número antes e depois):
+
+- aumentar o orçamento de refinamento de 400 para 6.000 passos: 610 ms → 1.074 ms
+- pontuar 6 movimentos candidatos e ficar com o melhor: 610 ms → 904 ms
+
+### ⚠️ PERGUNTA ABERTA — o PROP-6-SB que eu propus está errado
+
+Eu propus, e você aprovou, este substituto para Star Battle: *"nenhuma célula pode mudar de
+região sem quebrar o puzzle"*. **A medição mostra que essa definição não se sustenta.**
+
+`dart run tool/diagnose.dart`, sobre 48 puzzles em três tamanhos:
+
+| Tamanho | Movimentos legais | Que mantêm a unicidade | Puzzles rígidos |
+|---|---|---|---|
+| 6x6 / 1 estrela | 26,5 | mediana 16 (62,6%) | 0 de 25 |
+| 8x8 / 1 estrela | 44,5 | mediana 27 (63,6%) | 0 de 15 |
+| 9x9 / 2 estrelas | 56,1 | mediana 42 (71,7%) | 0 de 8 |
+
+Cerca de **dois terços** das mudanças de fronteira preservam a unicidade, e **nenhum** puzzle é
+totalmente rígido. Ligar essa exigência no gerador faz ele desistir depois de 4.000 tentativas
+num tabuleiro 6x6.
+
+**Por que isso faz sentido:** uma célula no meio de uma região, longe de qualquer estrela, não
+carrega informação nenhuma. Trocá-la de região não muda o raciocínio. Isso não é "gordura" do
+puzzle, é uma propriedade do gênero — igualzinho ao que a pesquisa achou para Shikaku e Tents.
+
+**O teste NÃO foi enfraquecido.** Está marcado como pulado, com o motivo e os números escritos
+na própria mensagem, esperando sua decisão. Opções na conversa.
+
+**O que de fato protege contra puzzle "frouxo" hoje** é o PROP-3 dos dois lados: o puzzle só
+recebe o rótulo T4 se ele resolve com técnicas até T4 **e falha** com técnicas até T3. Ou seja,
+a técnica difícil é obrigatória, não decorativa.

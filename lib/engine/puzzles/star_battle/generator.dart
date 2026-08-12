@@ -22,10 +22,26 @@ class StarBattleGenerator
     required this.size,
     required this.starsPerUnit,
     this.maxAttempts = 4000,
+    this.enforceBoundaryRigidity = false,
   });
 
   final int size;
   final int starsPerUnit;
+
+  /// Whether to require PROP-6-SB (full boundary rigidity) before accepting.
+  ///
+  /// DEFAULTS TO FALSE, and that is a finding, not a shortcut. Turning it on
+  /// makes generation fail outright: 4,000 consecutive attempts on a 6x6 board
+  /// produced no layout in which EVERY legal single-cell region change destroys
+  /// uniqueness. Requiring all of roughly 40-100 independent boundary moves to
+  /// break the puzzle is a far stronger condition than it sounds, and appears to
+  /// be effectively unsatisfiable — the same shape of problem the research found
+  /// for Tents (literal PROP-6 provably impossible) and Shikaku (vacuous).
+  ///
+  /// The flag is kept so the claim stays measurable rather than anecdotal. See
+  /// `tool/diagnose.dart` for the slack distribution, and PROGRESS.md for the
+  /// open question this raises about how PROP-6 should be defined here.
+  final bool enforceBoundaryRigidity;
 
   /// Fails loudly rather than returning something unverified (X1). A generator
   /// that exhausts this budget is a real defect worth surfacing, not a case to
@@ -76,6 +92,15 @@ class StarBattleGenerator
         continue;
       }
       if (_oracle.countSolutions(puzzle) != SolutionCount.unique) {
+        continue;
+      }
+      // PROP-6-SB (decision D5). Star Battle has no removable clues — the region
+      // partition IS the clue — so the agreed substitute for minimality is that
+      // the layout carries no slack: no single cell may change region and still
+      // leave a legal, uniquely solvable puzzle. Refinement stops at the first
+      // unique layout it reaches, which is frequently NOT rigid, so this has to
+      // be an explicit acceptance gate rather than something we hope falls out.
+      if (enforceBoundaryRigidity && !isBoundaryRigid(regionOfCell)) {
         continue;
       }
       final tier = _humanSolver.rateDifficulty(puzzle);
@@ -201,6 +226,42 @@ class StarBattleGenerator
     return columns;
   }
 
+  // ------------------------------------------------------------- PROP-6-SB
+
+  /// Whether no single cell can change region and still leave a legal, uniquely
+  /// solvable puzzle.
+  ///
+  /// Exits on the first violation found: one counter-example is enough to prove
+  /// the layout has slack, and the caller only needs the yes/no.
+  bool isBoundaryRigid(List<int> owner) {
+    final cellCount = size * size;
+    for (var cell = 0; cell < cellCount; cell++) {
+      final from = owner[cell];
+      for (final to in _orthogonalNeighbours(cell)
+          .map((neighbour) => owner[neighbour])
+          .toSet()) {
+        if (to == from) {
+          continue;
+        }
+        final variant = List<int>.from(owner)..[cell] = to;
+        final altered = StarBattlePuzzle(
+          size: size,
+          starsPerUnit: starsPerUnit,
+          regionOfCell: variant,
+        );
+        // An illegal layout — empty or disconnected region — is not a puzzle at
+        // all, so it cannot demonstrate slack.
+        if (_validator.puzzleViolations(altered).isNotEmpty) {
+          continue;
+        }
+        if (_oracle.countSolutions(altered) == SolutionCount.unique) {
+          return false;
+        }
+      }
+    }
+    return true;
+  }
+
   // ------------------------------------------------------ uniqueness refining
 
   /// Directed refinement steps before abandoning this star configuration.
@@ -212,12 +273,12 @@ class StarBattleGenerator
   /// cheaper escape.
   static const int _maxRefineSteps = 400;
 
-  /// How many candidate moves to score per refinement step.
-  ///
-  /// Picking a move at random kills the current intruder but often resurrects an
-  /// earlier one, which is what makes the search cycle. Scoring a handful and
-  /// keeping the best turns each step into real progress.
-  static const int _movesScoredPerStep = 6;
+  // REVERTED, kept as a note so nobody re-derives the idea and re-pays for it:
+  // scoring several candidate moves per step and keeping the one that left the
+  // fewest solutions. The hypothesis was that a random pick resurrects earlier
+  // intruders and makes the search cycle. Measurement disagreed — 9x9 median
+  // went from 610 ms to 904 ms, because the extra oracle calls per step cost
+  // more than the better move saved.
 
   /// Reshapes region boundaries until the puzzle has exactly one solution.
   ///
@@ -315,73 +376,48 @@ class StarBattleGenerator
   /// Moves one cell starred by [intruder] but not by the intended solution into
   /// an adjacent region, which invalidates [intruder].
   ///
-  /// Collects every such legal move, scores a random sample of them by how many
-  /// solutions the resulting layout still admits, and returns the best. Scoring
-  /// is what stops the search cycling between two layouts that each kill the
-  /// other's intruder.
+  /// Takes the first legal move in a shuffled order rather than evaluating
+  /// several — see the reverted-optimisation note above for the measurement.
   List<int>? _breakIntruder(
     DeterministicRandom rng,
     List<int> owner,
     Set<int> intendedStars,
     StarBattleSolution intruder,
   ) {
-    final moves = <List<int>>[];
+    final movable = intruder.starIndices
+        .where((cell) => !intendedStars.contains(cell))
+        .toList();
+    if (movable.isEmpty) {
+      return null;
+    }
+    rng.shuffle(movable);
+
     final regionSizes = List<int>.filled(size, 0);
     for (final region in owner) {
       regionSizes[region]++;
     }
 
-    for (final cell in intruder.starIndices) {
-      if (intendedStars.contains(cell)) {
-        continue; // moving an intended star would change a region's quota
-      }
+    for (final cell in movable) {
       final from = owner[cell];
       // The source region must keep enough cells to seat its own stars.
       if (regionSizes[from] - 1 < starsPerUnit) {
         continue;
       }
-      if (!_staysConnectedWithout(owner, from, cell)) {
-        continue;
-      }
+      final targets = <int>[];
       for (final neighbour in _orthogonalNeighbours(cell)) {
         final to = owner[neighbour];
-        if (to == from) {
-          continue;
-        }
-        final candidate = List<int>.from(owner)..[cell] = to;
-        moves.add(candidate);
-      }
-    }
-
-    if (moves.isEmpty) {
-      return null;
-    }
-    rng.shuffle(moves);
-
-    List<int>? best;
-    var bestCount = 1 << 30;
-    final sample =
-        moves.length <= _movesScoredPerStep ? moves.length : _movesScoredPerStep;
-    for (var i = 0; i < sample; i++) {
-      final candidate = moves[i];
-      final puzzle = StarBattlePuzzle(
-        size: size,
-        starsPerUnit: starsPerUnit,
-        regionOfCell: candidate,
-      );
-      // Only the ordering matters, so stop counting as soon as this move is
-      // provably no better than the best one seen.
-      final count = _oracle.countSolutionsUpTo(puzzle, bestCount);
-      if (count >= 1 && count < bestCount) {
-        bestCount = count;
-        best = candidate;
-        if (count == 1) {
-          break;
+        if (to != from && !targets.contains(to)) {
+          targets.add(to);
         }
       }
+      if (targets.isEmpty || !_staysConnectedWithout(owner, from, cell)) {
+        continue;
+      }
+      final candidate = List<int>.from(owner);
+      candidate[cell] = rng.pick(targets);
+      return candidate;
     }
-
-    return best ?? moves.first;
+    return null;
   }
 
   /// Whether [region] is still orthogonally connected once [removed] leaves it.
