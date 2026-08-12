@@ -1,0 +1,9 @@
+# Test tag configuration.
+#
+# Without this file the `nightly` tag has no effect: the runner warns that the
+# tag is unknown and runs the suite anyway, so a plain `flutter test` ends up
+# generating large boards for many minutes. Declaring it here is what makes
+# Layer 3 opt-in.
+tags:
+  nightly:
+    skip: "Layer 3 — volume generation. Run it with: flutter test --tags nightly"

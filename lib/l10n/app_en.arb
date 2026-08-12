@@ -1,0 +1,57 @@
+{
+  "@@locale": "en",
+
+  "appTitle": "Nodro",
+  "@appTitle": {
+    "description": "The product name. Not translated."
+  },
+
+  "starBattleName": "Star Battle",
+  "@starBattleName": {
+    "description": "Display name of the Star Battle puzzle type."
+  },
+
+  "difficultyEasy": "Easy",
+  "@difficultyEasy": {
+    "description": "Difficulty label shown to the player. The four labels map onto internal technique tiers 1..7; only the label is translated, the tier is what gets stored."
+  },
+  "difficultyMedium": "Medium",
+  "@difficultyMedium": {},
+  "difficultyHard": "Hard",
+  "@difficultyHard": {},
+  "difficultyExtreme": "Extreme",
+  "@difficultyExtreme": {},
+
+  "boardSummary": "{size}×{size} · {stars} star per row, column and region",
+  "@boardSummary": {
+    "description": "One-line description of the board rules currently in play.",
+    "placeholders": {
+      "size": { "type": "int" },
+      "stars": { "type": "int" }
+    }
+  },
+
+  "starsPlaced": "{placed} of {total} stars",
+  "@starsPlaced": {
+    "description": "Progress counter above the board.",
+    "placeholders": {
+      "placed": { "type": "int" },
+      "total": { "type": "int" }
+    }
+  },
+
+  "solvedMessage": "Solved!",
+  "@solvedMessage": {
+    "description": "Shown when the player completes the puzzle correctly."
+  },
+
+  "loadingBank": "Loading puzzle…",
+  "@loadingBank": {
+    "description": "Shown while the puzzle bank asset is being read."
+  },
+
+  "loadFailed": "Could not load the puzzle bank.",
+  "@loadFailed": {
+    "description": "Shown when the bank asset is missing or malformed."
+  }
+}

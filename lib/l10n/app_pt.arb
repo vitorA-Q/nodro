@@ -1,0 +1,17 @@
+{
+  "@@locale": "pt",
+
+  "appTitle": "Nodro",
+  "starBattleName": "Star Battle",
+
+  "difficultyEasy": "Fácil",
+  "difficultyMedium": "Médio",
+  "difficultyHard": "Difícil",
+  "difficultyExtreme": "Extremo",
+
+  "boardSummary": "{size}×{size} · {stars} estrela por linha, coluna e região",
+  "starsPlaced": "{placed} de {total} estrelas",
+  "solvedMessage": "Resolvido!",
+  "loadingBank": "Carregando puzzle…",
+  "loadFailed": "Não foi possível carregar o banco de puzzles."
+}

@@ -118,3 +118,13 @@ Hipóteses ainda não testadas, para quando o modo infinito for prioridade:
   busca por linha com posicionamentos pré-computados, e solução-primeiro). Fora do Marco 1 por
   decisão: o banco é gerado uma vez no PC e o jogador nunca espera, então um gerador 3x mais
   rápido não muda nada no lançamento.
+## 10x10 com 2 estrelas — FORA do Marco 1, decidido
+
+Não perguntar sobre isto de novo até o Marco 1 estar publicado.
+
+O banco tem três tamanhos (6x6, 8x8, 9x9) e quatro dificuldades, o que basta para avaliar se o
+jogo é bom. O 10x10 gera lento demais para encher uma fatia em tempo razoável: uma rodada
+paralela sozinha estourou o orçamento de tempo inteiro antes do corte agir. O corte foi
+consertado (rodadas menores), mas o lote não foi refeito, de propósito.
+
+Quando voltar: rodar `dart run tool/generate_bank.dart --max-minutes 45` e deixar trabalhando.
