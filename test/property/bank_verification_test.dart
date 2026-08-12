@@ -93,8 +93,12 @@ List<_BankEntry> _entriesOf(File file) {
       continue;
     }
     final split = line.indexOf('|');
-    expect(split, greaterThan(0),
-        reason: 'malformed bank line in ${file.path}: $line');
+    if (split <= 0) {
+      // Thrown rather than expect()ed: this runs while the test file is being
+      // loaded, before any test body exists, and expect() outside a test just
+      // reports OutsideTestException and hides the real problem.
+      throw FormatException('malformed bank line in ${file.path}', line);
+    }
     final tier = TechniqueTier.fromLevel(int.parse(line.substring(0, split)));
     entries.add(_BankEntry(tier, serializer.deserialize(line.substring(split + 1))));
   }

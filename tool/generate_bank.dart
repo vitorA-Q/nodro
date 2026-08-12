@@ -27,9 +27,15 @@ const List<(int size, int stars)> _configs = <(int, int)>[
   (10, 2),
 ];
 
-/// Seeds handed to one isolate at a time. Small enough that cores stay busy
-/// evenly even though a 10x10 puzzle costs a thousand times a 6x6 one.
-const int _seedsPerChunk = 8;
+/// Seeds handed to one isolate at a time.
+///
+/// Kept small because the wall-time limit can only be checked *between* rounds:
+/// once a round is dispatched it must finish. With eight seeds per isolate a
+/// single 10x10 round ran past the whole time budget before the limit could
+/// bite. Two keeps rounds short enough for the cap to mean something, at the
+/// cost of slightly more isolate spawns — which are cheap next to a 10x10
+/// generation.
+const int _seedsPerChunk = 2;
 
 Future<void> main(List<String> args) async {
   final budgetKb = _intArg(args, '--budget-kb') ?? 3072;
