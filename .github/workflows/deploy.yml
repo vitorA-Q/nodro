@@ -1,0 +1,85 @@
+# Builds the indexable static site plus the Flutter app and publishes both to
+# GitHub Pages on every push to main.
+#
+# ## Why GitHub Pages and not Cloudflare Pages
+#
+# Cloudflare is the better CDN and was the earlier choice, but connecting a
+# repository to Cloudflare Pages requires steps in their dashboard that cannot
+# be scripted from here. GitHub Pages is configured entirely by this file, so
+# the site goes live on the next push with nothing to click. Both serve static
+# HTML and the Flutter app on one domain with path routing, which is what the
+# architecture actually needs. Moving to Cloudflare later is a DNS change and a
+# dashboard connection, not a rewrite.
+#
+# ## The layout it produces
+#
+#   /                        hand-written HTML, indexable
+#   /star-battle/            rules
+#   /star-battle/techniques/ one page per technique, SVG from the real solver
+#   /pt/...                  the same in Portuguese, with hreflang
+#   /play/                   the Flutter app
+name: Deploy
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Verify
+        # The release gate runs before anything is published. A bank that fails
+        # PROP-1..PROP-5 must never reach a player.
+        run: |
+          dart analyze
+          flutter test
+
+      - name: Build the static site
+        run: dart run tool/generate_seo.dart --out public
+
+      - name: Build the app
+        run: flutter build web --release --base-href=/nodro/play/
+
+      - name: Assemble
+        run: |
+          mkdir -p public/play
+          cp -r build/web/* public/play/
+          # Deep links inside the app fall back to its own index rather than to
+          # a 404, which is what path routing needs on a static host.
+          cp build/web/index.html public/play/404.html
+          touch public/.nojekyll
+
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: public
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

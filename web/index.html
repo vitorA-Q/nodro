@@ -18,7 +18,23 @@
 
   <meta charset="UTF-8">
   <meta content="IE=Edge" http-equiv="X-UA-Compatible">
-  <meta name="description" content="Nikoli-family logic puzzles with proven-unique generation, technique-based difficulty, and hints that teach.">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="description" content="Play Star Battle: logic puzzles with provably unique solutions and hints that teach the technique instead of giving the answer.">
+  <meta name="theme-color" content="#141821">
+
+  <!--
+    This page is the APP. It renders into a canvas, so a crawler reads nothing
+    from it — which is exactly why the indexable content lives in hand-written
+    static pages at / and /star-battle/ rather than here. The canonical link
+    points a crawler that lands here back at the page it should actually read.
+  -->
+  <link rel="canonical" href="https://vitora-q.github.io/nodro/star-battle/">
+
+  <meta property="og:type" content="website">
+  <meta property="og:title" content="Nodro — Star Battle">
+  <meta property="og:description" content="Logic puzzles with provably unique solutions and hints that teach.">
+  <meta property="og:image" content="https://vitora-q.github.io/nodro/og.png">
+  <meta name="twitter:card" content="summary_large_image">
 
   <!-- iOS meta tags & icons -->
   <meta name="mobile-web-app-capable" content="yes">
@@ -29,10 +45,10 @@
   <!-- Favicon -->
   <link rel="icon" type="image/png" href="favicon.png"/>
 
-  <title>Nodro</title>
+  <title>Nodro — Star Battle</title>
   <link rel="manifest" href="manifest.json">
 </head>
-<body>
+<body style="background:#FAF7F1;margin:0">
   <!--
     You can customize the "flutter_bootstrap.js" script.
     This is useful to provide a custom configuration to the Flutter loader
@@ -41,6 +57,28 @@
     For more details:
     * https://docs.flutter.dev/platform-integration/web/initialization
   -->
+  <!--
+    Cookie-free analytics hook.
+
+    The app calls window.nodroTrack(event, ["key","value","key","value"]). With
+    no provider configured this is a no-op, which is the correct default:
+    shipping without analytics must never break the game.
+
+    To switch it on, add ONE cookieless provider script above this block and
+    forward the event inside the function — Cloudflare Web Analytics,
+    GoatCounter and Umami all take a name plus a flat object. Nothing here
+    stores an identifier, and no event carries anything that could become one.
+  -->
+  <script>
+    window.nodroTrack = function (event, pairs) {
+      var props = {};
+      for (var i = 0; i + 1 < pairs.length; i += 2) { props[pairs[i]] = pairs[i + 1]; }
+      // Example, once a provider is added:
+      // if (window.umami) { window.umami.track(event, props); }
+      if (window.__nodroDebugAnalytics) { console.log('[nodro]', event, props); }
+    };
+  </script>
+
   <script src="flutter_bootstrap.js" async></script>
 </body>
 </html>

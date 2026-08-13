@@ -1,13 +1,16 @@
 {
-    "name": "Nodro",
+    "name": "Nodro — Star Battle",
     "short_name": "Nodro",
     "start_url": ".",
+    "scope": ".",
     "display": "standalone",
-    "background_color": "#0175C2",
-    "theme_color": "#0175C2",
-    "description": "Nikoli-family logic puzzles with proven-unique generation, technique-based difficulty, and hints that teach.",
+    "background_color": "#FAF7F1",
+    "theme_color": "#141821",
+    "description": "Star Battle logic puzzles with provably unique solutions and hints that teach the technique instead of giving the answer.",
     "orientation": "portrait-primary",
     "prefer_related_applications": false,
+    "categories": ["games", "puzzle", "education"],
+    "lang": "en",
     "icons": [
         {
             "src": "icons/Icon-192.png",

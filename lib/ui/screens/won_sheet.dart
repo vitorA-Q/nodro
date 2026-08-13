@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:share_plus/share_plus.dart';
 
+import '../../data/analytics.dart';
 import '../../l10n/app_localizations.dart';
 import '../format.dart';
 import '../game/game_session.dart';
@@ -117,6 +118,7 @@ class _WonSheet extends StatelessWidget {
   /// Either way the player gets visible confirmation: a share that silently
   /// does nothing is worse than no share button, because they think it worked.
   Future<void> _share(BuildContext context, AppLocalizations l10n) async {
+    Analytics.shared(isDaily);
     final text = _shareText(l10n);
     var shared = false;
     try {

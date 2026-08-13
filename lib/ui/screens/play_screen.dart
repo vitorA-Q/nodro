@@ -4,6 +4,7 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import '../../data/analytics.dart';
 import '../../data/progress_repository.dart';
 import '../../data/puzzle_library.dart';
 import '../../engine/core/deterministic_random.dart';
@@ -130,6 +131,7 @@ class _PlayScreenState extends State<PlayScreen> with TickerProviderStateMixin {
     _conflicts = session.grid.conflictingStars;
     _conflictController.value = _conflicts.isEmpty ? 0 : 1;
     _winController.value = 0;
+    Analytics.puzzleStarted(session.puzzle.group.key);
     _clock?.cancel();
     if (session.isPractice) {
       // Practice runs without a clock on purpose: timing a replay of a puzzle
@@ -214,6 +216,15 @@ class _PlayScreenState extends State<PlayScreen> with TickerProviderStateMixin {
 
   @override
   void dispose() {
+    // Leaving without finishing is the number that says where the game is too
+    // hard, too slow or too confusing — the one thing worth measuring.
+    if (!_session.grid.isSolved && !_session.isPractice) {
+      Analytics.puzzleAbandoned(
+        _session.puzzle.group.key,
+        _session.grid.starCount,
+        _session.puzzle.entry.puzzle.totalStars,
+      );
+    }
     _clock?.cancel();
     _placeController.dispose();
     _conflictController.dispose();
@@ -283,6 +294,9 @@ class _PlayScreenState extends State<PlayScreen> with TickerProviderStateMixin {
     final best = widget.progress.bestTime(group.key);
     final isBest = !_session.isPractice &&
         (best == null || _session.elapsedSeconds < best);
+
+    Analytics.puzzleSolved(
+        group.key, _session.elapsedSeconds, _session.hintsUsed);
 
     if (!_session.isPractice) {
       await widget.progress.recordSolved(
@@ -408,6 +422,7 @@ class _PlayScreenState extends State<PlayScreen> with TickerProviderStateMixin {
           // reasoning the player actually leans on.
           unawaited(
               widget.progress.recordHint(found.deduction.techniqueId));
+          Analytics.hintUsed(found.deduction.techniqueId);
         }
         return;
       }

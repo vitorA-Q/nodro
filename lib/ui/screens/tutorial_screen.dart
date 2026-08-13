@@ -3,6 +3,7 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import '../../data/analytics.dart';
 import '../../engine/puzzles/star_battle/board.dart';
 import '../../engine/puzzles/star_battle/exhaustive_solver.dart';
 import '../../engine/puzzles/star_battle/model.dart';
@@ -109,12 +110,19 @@ class _TutorialScreenState extends State<TutorialScreen> {
   _Beat get _beat => _beats[_index];
   bool get _isLast => _index == _beats.length - 1;
 
+  @override
+  void initState() {
+    super.initState();
+    Analytics.tutorialStarted(widget.kind.name);
+  }
+
   void _advance() {
     setState(() {
       _nudge = null;
       _hint = null;
       _hintStage = 0;
       if (_isLast) {
+        Analytics.tutorialFinished(widget.kind.name);
         Navigator.of(context).pop();
       } else {
         _index++;

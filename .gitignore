@@ -43,3 +43,6 @@ app.*.map.json
 /android/app/debug
 /android/app/profile
 /android/app/release
+
+# Generated static site (built by tool/generate_seo.dart in CI)
+/public/

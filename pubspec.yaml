@@ -38,6 +38,12 @@ dependencies:
     sdk: flutter
   intl: any
 
+  # Ships with the SDK. Declared so the analyzer accepts the import used to turn
+  # off hash-fragment URLs: search engines treat everything after a # as the
+  # same page, and the static site links into the app by path.
+  flutter_web_plugins:
+    sdk: flutter
+
   # Key-value storage. Justification required by X6: it is the only store that
   # behaves identically on web (localStorage) and Android (SharedPreferences)
   # with no platform-specific code, which decision D10 asks for. It is kept

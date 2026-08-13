@@ -1,4 +1,6 @@
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
+import 'package:flutter_web_plugins/url_strategy.dart';
 
 import 'data/progress_repository.dart';
 import 'data/puzzle_library.dart';
@@ -6,7 +8,14 @@ import 'l10n/app_localizations.dart';
 import 'ui/screens/select_screen.dart';
 import 'ui/theme/nodro_theme.dart';
 
-void main() => runApp(const NodroApp());
+void main() {
+  // Clean paths rather than a hash fragment. Search engines treat everything
+  // after a # as the same page, and the static site links into the app by path.
+  if (kIsWeb) {
+    usePathUrlStrategy();
+  }
+  runApp(const NodroApp());
+}
 
 /// Loads the shipped bank and the player's history, then hands off to the hub.
 ///
