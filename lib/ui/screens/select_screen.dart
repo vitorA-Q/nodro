@@ -9,6 +9,10 @@ import '../theme/difficulty.dart';
 import '../theme/nodro_theme.dart';
 import 'pick_screen.dart';
 import 'play_screen.dart';
+import 'settings_screen.dart';
+import 'stats_screen.dart';
+import 'techniques_screen.dart';
+import 'tutorial_screen.dart';
 
 /// The hub: every group, the daily challenge, and whatever game was left
 /// unfinished.
@@ -21,18 +25,57 @@ class SelectScreen extends StatefulWidget {
     super.key,
     required this.library,
     required this.progress,
-    required this.onToggleTheme,
+    required this.onSettingsChanged,
   });
 
   final PuzzleLibrary library;
   final ProgressRepository progress;
-  final VoidCallback onToggleTheme;
+
+  /// Tells the app root to rebuild when the theme or locale changes.
+  final VoidCallback onSettingsChanged;
 
   @override
   State<SelectScreen> createState() => _SelectScreenState();
 }
 
 class _SelectScreenState extends State<SelectScreen> {
+  @override
+  void initState() {
+    super.initState();
+    // The tutorial runs on the very first open. Deferred a frame so it opens
+    // over a drawn hub rather than over nothing.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (widget.progress.flag(Flags.tutorialSeen) == null) {
+        _openTutorial();
+      }
+    });
+  }
+
+  Future<void> _openTutorial(
+      {TutorialKind kind = TutorialKind.oneStar}) async {
+    final sample = kind == TutorialKind.twoStar
+        ? widget.library
+            .inGroup(const PuzzleGroup(9, 2, Difficulty.medium))
+            .firstOrNull
+        : widget.library
+            .inGroup(const PuzzleGroup(6, 1, Difficulty.easy))
+            .firstOrNull;
+    if (sample == null || !mounted) {
+      return;
+    }
+    await Navigator.of(context).push(MaterialPageRoute<void>(
+      builder: (_) =>
+          TutorialScreen(puzzle: sample.entry.puzzle, kind: kind),
+    ));
+    await widget.progress.setFlag(
+        kind == TutorialKind.twoStar
+            ? Flags.twoStarTutorialSeen
+            : Flags.tutorialSeen,
+        'yes');
+    if (mounted) {
+      setState(() {});
+    }
+  }
   Future<void> _openGroup(PuzzleGroup group) async {
     final l10n = AppLocalizations.of(context);
     final palette = NodroPalette.of(context);
@@ -170,6 +213,15 @@ class _SelectScreenState extends State<SelectScreen> {
 
   Future<void> _push(LibraryPuzzle puzzle,
       {required bool isDaily, bool isPractice = false}) async {
+    // The two-star lesson fires the first time a 9x9 is opened: the quota rule
+    // is exactly what a player who has only met 1★ will get wrong.
+    if (puzzle.entry.puzzle.starsPerUnit > 1 &&
+        widget.progress.flag(Flags.twoStarTutorialSeen) == null) {
+      await _openTutorial(kind: TutorialKind.twoStar);
+      if (!mounted) {
+        return;
+      }
+    }
     await Navigator.of(context).push(MaterialPageRoute<void>(
       builder: (_) => PlayScreen(
         puzzle: puzzle,
@@ -181,6 +233,14 @@ class _SelectScreenState extends State<SelectScreen> {
     ));
     if (mounted) {
       setState(() {}); // progress may have changed while we were away
+    }
+  }
+
+  Future<void> _openScreen(Widget screen) async {
+    await Navigator.of(context)
+        .push(MaterialPageRoute<void>(builder: (_) => screen));
+    if (mounted) {
+      setState(() {});
     }
   }
 
@@ -234,13 +294,39 @@ class _SelectScreenState extends State<SelectScreen> {
                       ),
                     ),
                     IconButton(
-                      onPressed: widget.onToggleTheme,
-                      icon: Icon(
-                        Theme.of(context).brightness == Brightness.dark
-                            ? Icons.light_mode_outlined
-                            : Icons.dark_mode_outlined,
-                        color: palette.inkSoft,
-                      ),
+                      tooltip: l10n.techniquesTitle,
+                      onPressed: () => _openScreen(TechniquesScreen(
+                        progress: widget.progress,
+                        samplePuzzle: widget.library
+                            .inGroup(const PuzzleGroup(
+                                8, 1, Difficulty.hard))
+                            .first
+                            .entry
+                            .puzzle,
+                      )),
+                      icon: Icon(Icons.menu_book_outlined,
+                          color: palette.inkSoft),
+                    ),
+                    IconButton(
+                      tooltip: l10n.statsTitle,
+                      onPressed: () => _openScreen(StatsScreen(
+                        progress: widget.progress,
+                        library: widget.library,
+                      )),
+                      icon: Icon(Icons.insights_outlined,
+                          color: palette.inkSoft),
+                    ),
+                    IconButton(
+                      tooltip: l10n.settingsTitle,
+                      onPressed: () => _openScreen(SettingsScreen(
+                        progress: widget.progress,
+                        onChanged: widget.onSettingsChanged,
+                        onReplayTutorial: () {
+                          Navigator.of(context).pop();
+                          _openTutorial();
+                        },
+                      )),
+                      icon: Icon(Icons.tune_rounded, color: palette.inkSoft),
                     ),
                   ],
                 ),

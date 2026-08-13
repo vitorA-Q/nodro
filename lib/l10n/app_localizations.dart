@@ -530,6 +530,282 @@ abstract class AppLocalizations {
   /// **'{time} · {hints, plural, =0{no hints} =1{1 hint} other{{hints} hints}}'**
   String solvedInWithHints(String time, int hints);
 
+  /// No description provided for @tutorialTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'How to play'**
+  String get tutorialTitle;
+
+  /// No description provided for @tutorialStep1.
+  ///
+  /// In en, this message translates to:
+  /// **'The goal is to place stars. Tap the highlighted cell to place one.'**
+  String get tutorialStep1;
+
+  /// No description provided for @tutorialStep2.
+  ///
+  /// In en, this message translates to:
+  /// **'Stars are never neighbours — not even diagonally. See how the eight cells around it went grey? No star can go there.'**
+  String get tutorialStep2;
+
+  /// No description provided for @tutorialStep3.
+  ///
+  /// In en, this message translates to:
+  /// **'Every row and every column holds exactly one star on this board. So the rest of that row and column just got crossed out too.'**
+  String get tutorialStep3;
+
+  /// No description provided for @tutorialStep4.
+  ///
+  /// In en, this message translates to:
+  /// **'The coloured areas are regions, marked by the thick borders. Each region also holds exactly one star. That is what makes the puzzle interesting.'**
+  String get tutorialStep4;
+
+  /// No description provided for @tutorialStep5.
+  ///
+  /// In en, this message translates to:
+  /// **'Now a real deduction. Tap the hint panel to see what the board can already prove.'**
+  String get tutorialStep5;
+
+  /// No description provided for @tutorialStep6.
+  ///
+  /// In en, this message translates to:
+  /// **'That is the whole game: place a star, watch what it rules out, and find the cell that has no other option left.'**
+  String get tutorialStep6;
+
+  /// No description provided for @tutorialDone.
+  ///
+  /// In en, this message translates to:
+  /// **'Finish'**
+  String get tutorialDone;
+
+  /// No description provided for @tutorialNext.
+  ///
+  /// In en, this message translates to:
+  /// **'Next'**
+  String get tutorialNext;
+
+  /// No description provided for @tutorialSkip.
+  ///
+  /// In en, this message translates to:
+  /// **'Skip'**
+  String get tutorialSkip;
+
+  /// Gentle correction. The tutorial never blocks or scolds.
+  ///
+  /// In en, this message translates to:
+  /// **'Not that one — try the highlighted cell.'**
+  String get tutorialWrongCell;
+
+  /// No description provided for @tutorialTwoStarTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Two stars per line'**
+  String get tutorialTwoStarTitle;
+
+  /// No description provided for @tutorialTwoStar1.
+  ///
+  /// In en, this message translates to:
+  /// **'This board is different: every row, column and region holds TWO stars.'**
+  String get tutorialTwoStar1;
+
+  /// No description provided for @tutorialTwoStar2.
+  ///
+  /// In en, this message translates to:
+  /// **'So one star does not finish its row. Watch — placing this one only blocks its neighbours.'**
+  String get tutorialTwoStar2;
+
+  /// No description provided for @tutorialTwoStar3.
+  ///
+  /// In en, this message translates to:
+  /// **'Now the second star in that row. Only now does the rest of the row get crossed out, because the row has its full quota.'**
+  String get tutorialTwoStar3;
+
+  /// No description provided for @tutorialTwoStar4.
+  ///
+  /// In en, this message translates to:
+  /// **'That is the one rule to carry over: a line clears when it is FULL, not when it has a star.'**
+  String get tutorialTwoStar4;
+
+  /// No description provided for @techniquesTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Techniques'**
+  String get techniquesTitle;
+
+  /// No description provided for @techniquesSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Every deduction this game will ever ask of you, named and explained. No puzzle here needs a guess.'**
+  String get techniquesSubtitle;
+
+  /// No description provided for @techniqueTier.
+  ///
+  /// In en, this message translates to:
+  /// **'Tier {tier}'**
+  String techniqueTier(int tier);
+
+  /// No description provided for @techniqueSeen.
+  ///
+  /// In en, this message translates to:
+  /// **'Used {count} times'**
+  String techniqueSeen(int count);
+
+  /// No description provided for @techniqueUnseen.
+  ///
+  /// In en, this message translates to:
+  /// **'Not met yet'**
+  String get techniqueUnseen;
+
+  /// No description provided for @techniqueOpenLibrary.
+  ///
+  /// In en, this message translates to:
+  /// **'Read about this technique'**
+  String get techniqueOpenLibrary;
+
+  /// No description provided for @statsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Statistics'**
+  String get statsTitle;
+
+  /// No description provided for @statsSolvedTotal.
+  ///
+  /// In en, this message translates to:
+  /// **'Puzzles solved'**
+  String get statsSolvedTotal;
+
+  /// No description provided for @statsCurrentStreak.
+  ///
+  /// In en, this message translates to:
+  /// **'Current streak'**
+  String get statsCurrentStreak;
+
+  /// No description provided for @statsBestStreak.
+  ///
+  /// In en, this message translates to:
+  /// **'Longest streak'**
+  String get statsBestStreak;
+
+  /// No description provided for @statsHintsUsed.
+  ///
+  /// In en, this message translates to:
+  /// **'Hints used'**
+  String get statsHintsUsed;
+
+  /// No description provided for @statsAverage.
+  ///
+  /// In en, this message translates to:
+  /// **'Average {time}'**
+  String statsAverage(String time);
+
+  /// No description provided for @statsLast30.
+  ///
+  /// In en, this message translates to:
+  /// **'Last 30 days'**
+  String get statsLast30;
+
+  /// No description provided for @statsNothingYet.
+  ///
+  /// In en, this message translates to:
+  /// **'Nothing yet — solve a puzzle and it shows up here.'**
+  String get statsNothingYet;
+
+  /// No description provided for @statsTopTechniques.
+  ///
+  /// In en, this message translates to:
+  /// **'Techniques you needed most'**
+  String get statsTopTechniques;
+
+  /// No description provided for @settingsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Settings'**
+  String get settingsTitle;
+
+  /// No description provided for @settingsTheme.
+  ///
+  /// In en, this message translates to:
+  /// **'Theme'**
+  String get settingsTheme;
+
+  /// No description provided for @themeLight.
+  ///
+  /// In en, this message translates to:
+  /// **'Light'**
+  String get themeLight;
+
+  /// No description provided for @themeDark.
+  ///
+  /// In en, this message translates to:
+  /// **'Dark'**
+  String get themeDark;
+
+  /// No description provided for @themeSystem.
+  ///
+  /// In en, this message translates to:
+  /// **'System'**
+  String get themeSystem;
+
+  /// No description provided for @settingsTimer.
+  ///
+  /// In en, this message translates to:
+  /// **'Show the timer'**
+  String get settingsTimer;
+
+  /// No description provided for @settingsHaptics.
+  ///
+  /// In en, this message translates to:
+  /// **'Vibration'**
+  String get settingsHaptics;
+
+  /// No description provided for @settingsLanguage.
+  ///
+  /// In en, this message translates to:
+  /// **'Language'**
+  String get settingsLanguage;
+
+  /// No description provided for @languageSystem.
+  ///
+  /// In en, this message translates to:
+  /// **'System'**
+  String get languageSystem;
+
+  /// No description provided for @settingsEraseAll.
+  ///
+  /// In en, this message translates to:
+  /// **'Erase all progress'**
+  String get settingsEraseAll;
+
+  /// No description provided for @settingsEraseWarning.
+  ///
+  /// In en, this message translates to:
+  /// **'This removes every solved puzzle, best time and streak. It cannot be undone.'**
+  String get settingsEraseWarning;
+
+  /// No description provided for @settingsEraseConfirm.
+  ///
+  /// In en, this message translates to:
+  /// **'Erase everything'**
+  String get settingsEraseConfirm;
+
+  /// No description provided for @settingsEraseReally.
+  ///
+  /// In en, this message translates to:
+  /// **'Really erase? There is no way back.'**
+  String get settingsEraseReally;
+
+  /// No description provided for @settingsErased.
+  ///
+  /// In en, this message translates to:
+  /// **'Progress erased'**
+  String get settingsErased;
+
+  /// No description provided for @openTutorial.
+  ///
+  /// In en, this message translates to:
+  /// **'Replay the tutorial'**
+  String get openTutorial;
+
   /// No description provided for @techName_sbAdjacencyElimination.
   ///
   /// In en, this message translates to:

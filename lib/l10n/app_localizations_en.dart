@@ -276,6 +276,163 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String get tutorialTitle => 'How to play';
+
+  @override
+  String get tutorialStep1 =>
+      'The goal is to place stars. Tap the highlighted cell to place one.';
+
+  @override
+  String get tutorialStep2 =>
+      'Stars are never neighbours — not even diagonally. See how the eight cells around it went grey? No star can go there.';
+
+  @override
+  String get tutorialStep3 =>
+      'Every row and every column holds exactly one star on this board. So the rest of that row and column just got crossed out too.';
+
+  @override
+  String get tutorialStep4 =>
+      'The coloured areas are regions, marked by the thick borders. Each region also holds exactly one star. That is what makes the puzzle interesting.';
+
+  @override
+  String get tutorialStep5 =>
+      'Now a real deduction. Tap the hint panel to see what the board can already prove.';
+
+  @override
+  String get tutorialStep6 =>
+      'That is the whole game: place a star, watch what it rules out, and find the cell that has no other option left.';
+
+  @override
+  String get tutorialDone => 'Finish';
+
+  @override
+  String get tutorialNext => 'Next';
+
+  @override
+  String get tutorialSkip => 'Skip';
+
+  @override
+  String get tutorialWrongCell => 'Not that one — try the highlighted cell.';
+
+  @override
+  String get tutorialTwoStarTitle => 'Two stars per line';
+
+  @override
+  String get tutorialTwoStar1 =>
+      'This board is different: every row, column and region holds TWO stars.';
+
+  @override
+  String get tutorialTwoStar2 =>
+      'So one star does not finish its row. Watch — placing this one only blocks its neighbours.';
+
+  @override
+  String get tutorialTwoStar3 =>
+      'Now the second star in that row. Only now does the rest of the row get crossed out, because the row has its full quota.';
+
+  @override
+  String get tutorialTwoStar4 =>
+      'That is the one rule to carry over: a line clears when it is FULL, not when it has a star.';
+
+  @override
+  String get techniquesTitle => 'Techniques';
+
+  @override
+  String get techniquesSubtitle =>
+      'Every deduction this game will ever ask of you, named and explained. No puzzle here needs a guess.';
+
+  @override
+  String techniqueTier(int tier) {
+    return 'Tier $tier';
+  }
+
+  @override
+  String techniqueSeen(int count) {
+    return 'Used $count times';
+  }
+
+  @override
+  String get techniqueUnseen => 'Not met yet';
+
+  @override
+  String get techniqueOpenLibrary => 'Read about this technique';
+
+  @override
+  String get statsTitle => 'Statistics';
+
+  @override
+  String get statsSolvedTotal => 'Puzzles solved';
+
+  @override
+  String get statsCurrentStreak => 'Current streak';
+
+  @override
+  String get statsBestStreak => 'Longest streak';
+
+  @override
+  String get statsHintsUsed => 'Hints used';
+
+  @override
+  String statsAverage(String time) {
+    return 'Average $time';
+  }
+
+  @override
+  String get statsLast30 => 'Last 30 days';
+
+  @override
+  String get statsNothingYet =>
+      'Nothing yet — solve a puzzle and it shows up here.';
+
+  @override
+  String get statsTopTechniques => 'Techniques you needed most';
+
+  @override
+  String get settingsTitle => 'Settings';
+
+  @override
+  String get settingsTheme => 'Theme';
+
+  @override
+  String get themeLight => 'Light';
+
+  @override
+  String get themeDark => 'Dark';
+
+  @override
+  String get themeSystem => 'System';
+
+  @override
+  String get settingsTimer => 'Show the timer';
+
+  @override
+  String get settingsHaptics => 'Vibration';
+
+  @override
+  String get settingsLanguage => 'Language';
+
+  @override
+  String get languageSystem => 'System';
+
+  @override
+  String get settingsEraseAll => 'Erase all progress';
+
+  @override
+  String get settingsEraseWarning =>
+      'This removes every solved puzzle, best time and streak. It cannot be undone.';
+
+  @override
+  String get settingsEraseConfirm => 'Erase everything';
+
+  @override
+  String get settingsEraseReally => 'Really erase? There is no way back.';
+
+  @override
+  String get settingsErased => 'Progress erased';
+
+  @override
+  String get openTutorial => 'Replay the tutorial';
+
+  @override
   String get techName_sbAdjacencyElimination => 'Neighbour elimination';
 
   @override

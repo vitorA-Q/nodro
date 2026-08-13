@@ -52,6 +52,27 @@ abstract class ProgressRepository {
   AutoMarkSetting autoMark();
 
   Future<void> setAutoMark(AutoMarkSetting setting);
+
+  /// Free-form flags: tutorials seen, timer visibility, haptics, theme.
+  ///
+  /// One bag rather than a getter per setting, so adding the next one does not
+  /// mean touching the interface, both implementations and every test double.
+  String? flag(String key);
+
+  Future<void> setFlag(String key, String? value);
+
+  /// Wipes everything, for the erase-progress action.
+  Future<void> eraseAll();
+}
+
+/// Flag keys, in one place so a typo cannot silently create a second setting.
+abstract final class Flags {
+  static const String tutorialSeen = 'tutorial.oneStar';
+  static const String twoStarTutorialSeen = 'tutorial.twoStar';
+  static const String showTimer = 'ui.showTimer';
+  static const String haptics = 'ui.haptics';
+  static const String themeMode = 'ui.themeMode';
+  static const String locale = 'ui.locale';
 }
 
 /// What the player scored on a given day.
@@ -236,6 +257,37 @@ class SharedPrefsProgressRepository implements ProgressRepository {
   Future<void> setAutoMark(AutoMarkSetting setting) async {
     await _prefs?.setString(_autoMarkKey, setting);
   }
+
+  @override
+  String? flag(String key) => _prefs?.getString('nodro.flag.$key');
+
+  @override
+  Future<void> setFlag(String key, String? value) async {
+    if (value == null) {
+      await _prefs?.remove('nodro.flag.$key');
+    } else {
+      await _prefs?.setString('nodro.flag.$key', value);
+    }
+  }
+
+  @override
+  Future<void> eraseAll() async {
+    _solved = <String, Set<String>>{};
+    _best = <String, int>{};
+    _times = <String, int>{};
+    _hints = <String, int>{};
+    _daily = <String, DailyResult>{};
+    for (final key in <String>[
+      _solvedKey,
+      _bestKey,
+      _timesKey,
+      _hintsKey,
+      _dailyKey,
+      _gameKey,
+    ]) {
+      await _prefs?.remove(key);
+    }
+  }
 }
 
 /// In-memory implementation for tests. Same contract, no platform channel.
@@ -309,4 +361,28 @@ class InMemoryProgressRepository implements ProgressRepository {
   @override
   Future<void> setAutoMark(AutoMarkSetting setting) async =>
       _autoMark = setting;
+
+  final Map<String, String> _flags = <String, String>{};
+
+  @override
+  String? flag(String key) => _flags[key];
+
+  @override
+  Future<void> setFlag(String key, String? value) async {
+    if (value == null) {
+      _flags.remove(key);
+    } else {
+      _flags[key] = value;
+    }
+  }
+
+  @override
+  Future<void> eraseAll() async {
+    _solved.clear();
+    _best.clear();
+    _times.clear();
+    _hints.clear();
+    _daily.clear();
+    _game = null;
+  }
 }

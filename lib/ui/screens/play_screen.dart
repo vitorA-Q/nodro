@@ -85,6 +85,17 @@ class _PlayScreenState extends State<PlayScreen> with TickerProviderStateMixin {
   AutoMarkLevel get _level =>
       AutoMarkLevel.fromKey(widget.progress.autoMark());
 
+  void _haptic({bool strong = false}) {
+    if (widget.progress.flag(Flags.haptics) == 'off') {
+      return;
+    }
+    if (strong) {
+      HapticFeedback.mediumImpact();
+    } else {
+      HapticFeedback.selectionClick();
+    }
+  }
+
   GameSession _initialSession() {
     final blob = widget.resumeBlob;
     if (blob != null) {
@@ -251,7 +262,7 @@ class _PlayScreenState extends State<PlayScreen> with TickerProviderStateMixin {
     });
 
     if (placedStar) {
-      HapticFeedback.selectionClick();
+      _haptic();
       _placeController.forward(from: 0);
     }
     _afterMove();
@@ -262,7 +273,7 @@ class _PlayScreenState extends State<PlayScreen> with TickerProviderStateMixin {
     if (_session.grid.isSolved && !_recorded) {
       _recorded = true;
       _winController.forward(from: 0);
-      HapticFeedback.mediumImpact();
+      _haptic(strong: true);
       unawaited(_recordWin());
     }
   }
@@ -388,9 +399,16 @@ class _PlayScreenState extends State<PlayScreen> with TickerProviderStateMixin {
     }
     setState(() {
       if (_hint == null) {
-        _hint = _hints.hintFor(_session.grid);
+        final found = _hints.hintFor(_session.grid);
+        _hint = found;
         _hintStage = 1;
         _session.hintsUsed++;
+        if (found is DeductionHint) {
+          // Counted per technique so the statistics screen can say which
+          // reasoning the player actually leans on.
+          unawaited(
+              widget.progress.recordHint(found.deduction.techniqueId));
+        }
         return;
       }
       final hint = _hint!;
@@ -489,7 +507,8 @@ class _PlayScreenState extends State<PlayScreen> with TickerProviderStateMixin {
                       stars: puzzle.starsPerUnit,
                       tier: _session.puzzle.entry.tier,
                     )),
-                    elapsed: _session.isPractice
+                    elapsed: _session.isPractice ||
+                            widget.progress.flag(Flags.showTimer) == 'off'
                         ? ''
                         : formatDuration(_session.elapsedSeconds),
                     onBack: () => Navigator.of(context).maybePop(),

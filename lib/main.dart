@@ -25,7 +25,6 @@ class NodroApp extends StatefulWidget {
 }
 
 class _NodroAppState extends State<NodroApp> {
-  ThemeMode _themeMode = ThemeMode.system;
   PuzzleLibrary? _library;
   ProgressRepository? _progress;
   String? _error;
@@ -56,26 +55,22 @@ class _NodroAppState extends State<NodroApp> {
     }
   }
 
-  /// Flips the theme.
+  /// Read from stored settings rather than from `Theme.of`.
   ///
-  /// It deliberately does NOT ask `Theme.of(context)`: this State sits ABOVE
-  /// the MaterialApp, so that lookup returns Flutter's default theme rather
-  /// than the app's. It always reported "light", so the button switched to dark
-  /// once and then did nothing for the rest of the session. The mode is tracked
-  /// here instead, and "system" resolves against the platform brightness.
-  void _toggleTheme() {
-    setState(() {
-      _themeMode = switch (_themeMode) {
-        ThemeMode.system =>
-          WidgetsBinding.instance.platformDispatcher.platformBrightness ==
-                  Brightness.dark
-              ? ThemeMode.light
-              : ThemeMode.dark,
-        ThemeMode.light => ThemeMode.dark,
-        ThemeMode.dark => ThemeMode.light,
+  /// An earlier version asked `Theme.of(context)` from this State, which sits
+  /// ABOVE the MaterialApp — that lookup returns Flutter's default theme, so it
+  /// always reported "light" and the toggle worked exactly once per session.
+  ThemeMode get _themeMode => switch (_progress?.flag(Flags.themeMode)) {
+        'light' => ThemeMode.light,
+        'dark' => ThemeMode.dark,
+        _ => ThemeMode.system,
       };
-    });
-  }
+
+  Locale? get _locale => switch (_progress?.flag(Flags.locale)) {
+        'pt' => const Locale('pt'),
+        'en' => const Locale('en'),
+        _ => null, // follow the browser or the device
+      };
 
   @override
   Widget build(BuildContext context) {
@@ -84,6 +79,7 @@ class _NodroAppState extends State<NodroApp> {
       debugShowCheckedModeBanner: false,
       localizationsDelegates: AppLocalizations.localizationsDelegates,
       supportedLocales: AppLocalizations.supportedLocales,
+      locale: _locale,
       theme: buildNodroTheme(Brightness.light),
       darkTheme: buildNodroTheme(Brightness.dark),
       themeMode: _themeMode,
@@ -104,7 +100,7 @@ class _NodroAppState extends State<NodroApp> {
           return SelectScreen(
             library: library,
             progress: progress,
-            onToggleTheme: _toggleTheme,
+            onSettingsChanged: () => setState(() {}),
           );
         },
       ),

@@ -276,6 +276,163 @@ class AppLocalizationsPt extends AppLocalizations {
   }
 
   @override
+  String get tutorialTitle => 'Como jogar';
+
+  @override
+  String get tutorialStep1 =>
+      'O objetivo é colocar estrelas. Toque na célula destacada para colocar uma.';
+
+  @override
+  String get tutorialStep2 =>
+      'Estrelas nunca são vizinhas — nem na diagonal. Viu as oito células ao redor ficarem cinzas? Nenhuma estrela cabe ali.';
+
+  @override
+  String get tutorialStep3 =>
+      'Neste tabuleiro, cada linha e cada coluna tem exatamente uma estrela. Então o resto daquela linha e daquela coluna também foi eliminado.';
+
+  @override
+  String get tutorialStep4 =>
+      'As áreas coloridas são regiões, marcadas pelas bordas grossas. Cada região também tem exatamente uma estrela. É isso que deixa o puzzle interessante.';
+
+  @override
+  String get tutorialStep5 =>
+      'Agora uma dedução de verdade. Toque no painel de dica para ver o que o tabuleiro já consegue provar.';
+
+  @override
+  String get tutorialStep6 =>
+      'É esse o jogo inteiro: colocar uma estrela, ver o que ela elimina, e achar a célula que não tem mais outra opção.';
+
+  @override
+  String get tutorialDone => 'Concluir';
+
+  @override
+  String get tutorialNext => 'Avançar';
+
+  @override
+  String get tutorialSkip => 'Pular';
+
+  @override
+  String get tutorialWrongCell => 'Essa não — tente a célula destacada.';
+
+  @override
+  String get tutorialTwoStarTitle => 'Duas estrelas por linha';
+
+  @override
+  String get tutorialTwoStar1 =>
+      'Este tabuleiro é diferente: cada linha, coluna e região tem DUAS estrelas.';
+
+  @override
+  String get tutorialTwoStar2 =>
+      'Então uma estrela não fecha a linha dela. Repare — colocar esta aqui só bloqueia as vizinhas.';
+
+  @override
+  String get tutorialTwoStar3 =>
+      'Agora a segunda estrela daquela linha. Só agora o resto da linha é eliminado, porque a linha completou a cota dela.';
+
+  @override
+  String get tutorialTwoStar4 =>
+      'É essa a regra que muda: a linha só é eliminada quando está CHEIA, não quando tem uma estrela.';
+
+  @override
+  String get techniquesTitle => 'Técnicas';
+
+  @override
+  String get techniquesSubtitle =>
+      'Toda dedução que este jogo vai pedir de você, nomeada e explicada. Nenhum puzzle daqui precisa de chute.';
+
+  @override
+  String techniqueTier(int tier) {
+    return 'Tier $tier';
+  }
+
+  @override
+  String techniqueSeen(int count) {
+    return 'Usada $count vezes';
+  }
+
+  @override
+  String get techniqueUnseen => 'Ainda não apareceu';
+
+  @override
+  String get techniqueOpenLibrary => 'Ler sobre esta técnica';
+
+  @override
+  String get statsTitle => 'Estatísticas';
+
+  @override
+  String get statsSolvedTotal => 'Puzzles resolvidos';
+
+  @override
+  String get statsCurrentStreak => 'Sequência atual';
+
+  @override
+  String get statsBestStreak => 'Maior sequência';
+
+  @override
+  String get statsHintsUsed => 'Dicas usadas';
+
+  @override
+  String statsAverage(String time) {
+    return 'Média $time';
+  }
+
+  @override
+  String get statsLast30 => 'Últimos 30 dias';
+
+  @override
+  String get statsNothingYet =>
+      'Nada ainda — resolva um puzzle e ele aparece aqui.';
+
+  @override
+  String get statsTopTechniques => 'Técnicas que você mais precisou';
+
+  @override
+  String get settingsTitle => 'Ajustes';
+
+  @override
+  String get settingsTheme => 'Tema';
+
+  @override
+  String get themeLight => 'Claro';
+
+  @override
+  String get themeDark => 'Escuro';
+
+  @override
+  String get themeSystem => 'Sistema';
+
+  @override
+  String get settingsTimer => 'Mostrar o cronômetro';
+
+  @override
+  String get settingsHaptics => 'Vibração';
+
+  @override
+  String get settingsLanguage => 'Idioma';
+
+  @override
+  String get languageSystem => 'Sistema';
+
+  @override
+  String get settingsEraseAll => 'Apagar todo o progresso';
+
+  @override
+  String get settingsEraseWarning =>
+      'Isso remove todos os puzzles resolvidos, melhores tempos e sequências. Não dá para desfazer.';
+
+  @override
+  String get settingsEraseConfirm => 'Apagar tudo';
+
+  @override
+  String get settingsEraseReally => 'Apagar mesmo? Não tem volta.';
+
+  @override
+  String get settingsErased => 'Progresso apagado';
+
+  @override
+  String get openTutorial => 'Refazer o tutorial';
+
+  @override
   String get techName_sbAdjacencyElimination => 'Eliminação por vizinhança';
 
   @override

@@ -2,6 +2,7 @@ import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:share_plus/share_plus.dart';
 
 import '../../l10n/app_localizations.dart';
 import '../format.dart';
@@ -39,6 +40,51 @@ Future<void> showWonSheet({
   );
 }
 
+/// The shared result: Wordle-shaped, and it reveals NOTHING about the solution.
+///
+/// The emoji block is a PACE GAUGE, not a picture of the board — always ten
+/// segments regardless of board size, so neither its length nor its shape says
+/// anything about the puzzle. Sharing the grid itself would hand the answer to
+/// whoever reads the message, which would quietly destroy the daily challenge
+/// for everyone in the thread, using the one feature meant to spread it.
+///
+/// A top-level function so a test can assert the no-leak property directly.
+String buildShareText({
+  required AppLocalizations l10n,
+  required GameSession session,
+  required bool isDaily,
+  required int streak,
+}) {
+  final puzzle = session.puzzle.entry.puzzle;
+  final difficulty = Difficulty.of(session.puzzle.entry.tier).label(l10n);
+
+  // Par is generous on purpose: the bar should feel like a reward, not a
+  // scolding, for anyone who finished at all.
+  final par = puzzle.size * puzzle.size * 4;
+  final ratio = par / math.max(session.elapsedSeconds, 1);
+  final filled = (ratio * 6).round().clamp(1, 10);
+  final bar = '${'🟩' * filled}${'⬜' * (10 - filled)}';
+
+  final challenge = globalChallenge(
+    size: puzzle.size,
+    stars: puzzle.starsPerUnit,
+    tier: session.puzzle.entry.tier,
+  );
+
+  return <String>[
+    isDaily
+        ? '${l10n.appTitle} · ${l10n.dailyChallenge}'
+        : '${l10n.appTitle} · ${l10n.puzzleNumber(session.puzzle.number)}',
+    '${puzzle.size}×${puzzle.size} $difficulty · '
+        '${l10n.challengeBadge(challenge)}',
+    '⏱ ${formatDuration(session.elapsedSeconds)} · '
+        '${l10n.wonHintsUsed(session.hintsUsed)}',
+    bar,
+    if (isDaily && streak > 1) '🔥 $streak',
+    'nodro.app',
+  ].join('\n');
+}
+
 class _WonSheet extends StatelessWidget {
   const _WonSheet({
     required this.session,
@@ -59,41 +105,31 @@ class _WonSheet extends StatelessWidget {
   /// The bar is a pace gauge, not a picture of the board: sharing the grid
   /// itself would hand the answer to whoever reads the message, which would
   /// quietly destroy the daily challenge for everyone in the thread.
-  String _shareText(AppLocalizations l10n) {
-    final puzzle = session.puzzle.entry.puzzle;
-    final difficulty =
-        Difficulty.of(session.puzzle.entry.tier).label(l10n);
+  String _shareText(AppLocalizations l10n) => buildShareText(
+        l10n: l10n,
+        session: session,
+        isDaily: isDaily,
+        streak: streak,
+      );
 
-    // Par is generous on purpose: the bar should feel like a reward, not a
-    // scolding, for anyone who finished at all.
-    final par = puzzle.size * puzzle.size * 4;
-    final ratio = par / math.max(session.elapsedSeconds, 1);
-    final filled = (ratio * 6).round().clamp(1, 10);
-    final bar = '${'🟩' * filled}${'⬜' * (10 - filled)}';
-
-    final challenge = globalChallenge(
-      size: puzzle.size,
-      stars: puzzle.starsPerUnit,
-      tier: session.puzzle.entry.tier,
-    );
-
-    final lines = <String>[
-      isDaily
-          ? '${l10n.appTitle} · ${l10n.dailyChallenge}'
-          : '${l10n.appTitle} · ${l10n.puzzleNumber(session.puzzle.number)}',
-      '${puzzle.size}×${puzzle.size} $difficulty · '
-          '${l10n.challengeBadge(challenge)}',
-      '⏱ ${formatDuration(session.elapsedSeconds)} · '
-          '${l10n.wonHintsUsed(session.hintsUsed)}',
-      bar,
-      if (isDaily && streak > 1) '🔥 $streak',
-      'nodro.app',
-    ];
-    return lines.join('\n');
-  }
-
+  /// Native share sheet when the platform has one, clipboard when it does not.
+  ///
+  /// Either way the player gets visible confirmation: a share that silently
+  /// does nothing is worse than no share button, because they think it worked.
   Future<void> _share(BuildContext context, AppLocalizations l10n) async {
-    await Clipboard.setData(ClipboardData(text: _shareText(l10n)));
+    final text = _shareText(l10n);
+    var shared = false;
+    try {
+      final result = await Share.share(text);
+      shared = result.status == ShareResultStatus.success;
+    } on Object {
+      // No share sheet on this platform, or the user dismissed it.
+      shared = false;
+    }
+
+    if (!shared) {
+      await Clipboard.setData(ClipboardData(text: text));
+    }
     if (!context.mounted) {
       return;
     }

@@ -44,6 +44,12 @@ dependencies:
   # behind ProgressRepository so swapping it later is a one-file change.
   shared_preferences: ^2.3.2
 
+  # Reaches the OS and browser share sheets. Justification required by X6: the
+  # share button is the only free growth channel this project has, and hitting
+  # navigator.share on web plus the Android sheet otherwise means writing and
+  # maintaining platform channels by hand. Clipboard remains the fallback.
+  share_plus: ^10.1.2
+
 dev_dependencies:
   flutter_test:
     sdk: flutter
