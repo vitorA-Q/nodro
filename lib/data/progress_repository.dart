@@ -20,6 +20,17 @@ abstract class ProgressRepository {
   /// Best time in seconds for a group, or null if never finished.
   int? bestTime(String groupKey);
 
+  /// Best time for one specific puzzle, or null if never finished.
+  int? timeFor(String puzzleId);
+
+  /// Every recorded per-puzzle time, for the statistics screen.
+  Map<String, int> allTimes();
+
+  /// How many hints have been taken, per technique id.
+  Map<String, int> hintCounts();
+
+  Future<void> recordHint(String techniqueId);
+
   /// The game in progress, as an opaque blob, or null.
   String? savedGame();
 
@@ -87,10 +98,14 @@ class SharedPrefsProgressRepository implements ProgressRepository {
   static const String _gameKey = 'nodro.game.v1';
   static const String _dailyKey = 'nodro.daily.v2';
   static const String _autoMarkKey = 'nodro.automark.v1';
+  static const String _timesKey = 'nodro.times.v1';
+  static const String _hintsKey = 'nodro.hints.v1';
 
   SharedPreferences? _prefs;
   Map<String, Set<String>> _solved = <String, Set<String>>{};
   Map<String, int> _best = <String, int>{};
+  Map<String, int> _times = <String, int>{};
+  Map<String, int> _hints = <String, int>{};
   Map<String, DailyResult> _daily = <String, DailyResult>{};
 
   @override
@@ -111,6 +126,16 @@ class SharedPrefsProgressRepository implements ProgressRepository {
       if (rawBest != null) {
         final decoded = jsonDecode(rawBest) as Map<String, dynamic>;
         _best = decoded.map((key, value) => MapEntry(key, value as int));
+      }
+      final rawTimes = _prefs!.getString(_timesKey);
+      if (rawTimes != null) {
+        _times = (jsonDecode(rawTimes) as Map<String, dynamic>)
+            .map((key, value) => MapEntry(key, value as int));
+      }
+      final rawHints = _prefs!.getString(_hintsKey);
+      if (rawHints != null) {
+        _hints = (jsonDecode(rawHints) as Map<String, dynamic>)
+            .map((key, value) => MapEntry(key, value as int));
       }
       final rawDaily = _prefs!.getString(_dailyKey);
       if (rawDaily != null) {
@@ -142,15 +167,35 @@ class SharedPrefsProgressRepository implements ProgressRepository {
     if (previous == null || seconds < previous) {
       _best[groupKey] = seconds;
     }
+    final previousForPuzzle = _times[puzzleId];
+    if (previousForPuzzle == null || seconds < previousForPuzzle) {
+      _times[puzzleId] = seconds;
+    }
     await _prefs?.setString(
         _solvedKey,
         jsonEncode(
             _solved.map((key, value) => MapEntry(key, value.toList()))));
     await _prefs?.setString(_bestKey, jsonEncode(_best));
+    await _prefs?.setString(_timesKey, jsonEncode(_times));
   }
 
   @override
   int? bestTime(String groupKey) => _best[groupKey];
+
+  @override
+  int? timeFor(String puzzleId) => _times[puzzleId];
+
+  @override
+  Map<String, int> allTimes() => Map<String, int>.unmodifiable(_times);
+
+  @override
+  Map<String, int> hintCounts() => Map<String, int>.unmodifiable(_hints);
+
+  @override
+  Future<void> recordHint(String techniqueId) async {
+    _hints[techniqueId] = (_hints[techniqueId] ?? 0) + 1;
+    await _prefs?.setString(_hintsKey, jsonEncode(_hints));
+  }
 
   @override
   String? savedGame() => _prefs?.getString(_gameKey);
@@ -198,6 +243,8 @@ class InMemoryProgressRepository implements ProgressRepository {
   final Map<String, Set<String>> _solved = <String, Set<String>>{};
   final Map<String, int> _best = <String, int>{};
   final Map<String, DailyResult> _daily = <String, DailyResult>{};
+  final Map<String, int> _times = <String, int>{};
+  final Map<String, int> _hints = <String, int>{};
   String? _game;
   AutoMarkSetting _autoMark = 'full';
 
@@ -216,10 +263,28 @@ class InMemoryProgressRepository implements ProgressRepository {
     if (previous == null || seconds < previous) {
       _best[groupKey] = seconds;
     }
+    final previousForPuzzle = _times[puzzleId];
+    if (previousForPuzzle == null || seconds < previousForPuzzle) {
+      _times[puzzleId] = seconds;
+    }
   }
 
   @override
   int? bestTime(String groupKey) => _best[groupKey];
+
+  @override
+  int? timeFor(String puzzleId) => _times[puzzleId];
+
+  @override
+  Map<String, int> allTimes() => Map<String, int>.unmodifiable(_times);
+
+  @override
+  Map<String, int> hintCounts() => Map<String, int>.unmodifiable(_hints);
+
+  @override
+  Future<void> recordHint(String techniqueId) async {
+    _hints[techniqueId] = (_hints[techniqueId] ?? 0) + 1;
+  }
 
   @override
   String? savedGame() => _game;

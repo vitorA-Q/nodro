@@ -478,11 +478,9 @@ class _PlayScreenState extends State<PlayScreen> with TickerProviderStateMixin {
                   height: headerHeight,
                   child: _Header(
                     palette: palette,
-                    title: l10n.headerLine(
-                      l10n.starBattleName,
-                      puzzle.size,
-                      Difficulty.of(_session.puzzle.entry.tier).label(l10n),
-                    ),
+                    title: '${l10n.puzzleNumber(_session.puzzle.number)} · '
+                        '${puzzle.size}×${puzzle.size} · '
+                        '${Difficulty.of(_session.puzzle.entry.tier).label(l10n)}',
                     rule: _session.isPractice
                         ? l10n.practiceBanner
                         : l10n.ruleLine(puzzle.starsPerUnit),

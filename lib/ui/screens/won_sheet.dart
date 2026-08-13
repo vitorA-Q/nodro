@@ -6,6 +6,7 @@ import 'package:flutter/services.dart';
 import '../../l10n/app_localizations.dart';
 import '../format.dart';
 import '../game/game_session.dart';
+import '../theme/challenge.dart';
 import '../theme/difficulty.dart';
 import '../theme/nodro_theme.dart';
 
@@ -70,13 +71,23 @@ class _WonSheet extends StatelessWidget {
     final filled = (ratio * 6).round().clamp(1, 10);
     final bar = '${'🟩' * filled}${'⬜' * (10 - filled)}';
 
+    final challenge = globalChallenge(
+      size: puzzle.size,
+      stars: puzzle.starsPerUnit,
+      tier: session.puzzle.entry.tier,
+    );
+
     final lines = <String>[
-      '${l10n.appTitle} · ${isDaily ? l10n.dailyChallenge : ''}'.trim(),
-      '${puzzle.size}×${puzzle.size} · $difficulty',
+      isDaily
+          ? '${l10n.appTitle} · ${l10n.dailyChallenge}'
+          : '${l10n.appTitle} · ${l10n.puzzleNumber(session.puzzle.number)}',
+      '${puzzle.size}×${puzzle.size} $difficulty · '
+          '${l10n.challengeBadge(challenge)}',
       '⏱ ${formatDuration(session.elapsedSeconds)} · '
-          '💡 ${session.hintsUsed}',
+          '${l10n.wonHintsUsed(session.hintsUsed)}',
       bar,
       if (isDaily && streak > 1) '🔥 $streak',
+      'nodro.app',
     ];
     return lines.join('\n');
   }
@@ -159,40 +170,62 @@ class _WonSheet extends StatelessWidget {
               ),
             ],
             const SizedBox(height: 22),
-            _PrimaryButton(
-              palette: palette,
-              label: l10n.nextPuzzle,
-              icon: Icons.arrow_forward_rounded,
-              onTap: () {
-                Navigator.of(context).pop();
-                onNext();
-              },
-            ),
-            const SizedBox(height: 10),
-            Row(
-              children: <Widget>[
-                Expanded(
-                  child: _SecondaryButton(
-                    palette: palette,
-                    label: l10n.shareResult,
-                    icon: Icons.ios_share_rounded,
-                    onTap: () => _share(context, l10n),
+            // The daily deliberately does NOT offer another puzzle. Handing out
+            // a fresh board at the exact moment "one per day" should become
+            // clear would argue against the mechanic while announcing it.
+            if (isDaily) ...<Widget>[
+              _PrimaryButton(
+                palette: palette,
+                label: l10n.shareResult,
+                icon: Icons.ios_share_rounded,
+                onTap: () => _share(context, l10n),
+              ),
+              const SizedBox(height: 10),
+              _SecondaryButton(
+                palette: palette,
+                label: l10n.backToMenu,
+                icon: Icons.grid_view_rounded,
+                onTap: () {
+                  Navigator.of(context).pop();
+                  Navigator.of(context).maybePop();
+                },
+              ),
+            ] else ...<Widget>[
+              _PrimaryButton(
+                palette: palette,
+                label: l10n.nextPuzzle,
+                icon: Icons.arrow_forward_rounded,
+                onTap: () {
+                  Navigator.of(context).pop();
+                  onNext();
+                },
+              ),
+              const SizedBox(height: 10),
+              Row(
+                children: <Widget>[
+                  Expanded(
+                    child: _SecondaryButton(
+                      palette: palette,
+                      label: l10n.shareResult,
+                      icon: Icons.ios_share_rounded,
+                      onTap: () => _share(context, l10n),
+                    ),
                   ),
-                ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: _SecondaryButton(
-                    palette: palette,
-                    label: l10n.backToMenu,
-                    icon: Icons.grid_view_rounded,
-                    onTap: () {
-                      Navigator.of(context).pop();
-                      Navigator.of(context).maybePop();
-                    },
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: _SecondaryButton(
+                      palette: palette,
+                      label: l10n.backToMenu,
+                      icon: Icons.grid_view_rounded,
+                      onTap: () {
+                        Navigator.of(context).pop();
+                        Navigator.of(context).maybePop();
+                      },
+                    ),
                   ),
-                ),
-              ],
-            ),
+                ],
+              ),
+            ],
           ],
         ),
       ),

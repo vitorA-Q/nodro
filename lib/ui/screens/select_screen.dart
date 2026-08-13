@@ -5,6 +5,7 @@ import '../../data/puzzle_library.dart';
 import '../../engine/core/deterministic_random.dart';
 import '../../l10n/app_localizations.dart';
 import '../format.dart';
+import '../theme/difficulty.dart';
 import '../theme/nodro_theme.dart';
 import 'pick_screen.dart';
 import 'play_screen.dart';
@@ -273,17 +274,50 @@ class _SelectScreenState extends State<SelectScreen> {
                   ),
                 ),
                 const SizedBox(height: 10),
-                for (final group in widget.library.groupsByChallenge)
+                // One ROW per board size, four blocks across. A flat list
+                // ordered by challenge was tried and destroyed the grouping the
+                // eye relies on; the challenge number still makes sizes
+                // comparable without having to dictate the layout.
+                for (final (size, stars) in PuzzleLibrary.shippedSizes)
                   Padding(
-                    padding: const EdgeInsets.only(bottom: 8),
-                    child: _GroupRow(
-                      palette: palette,
-                      l10n: l10n,
-                      group: group,
-                      total: widget.library.countIn(group),
-                      solved: widget.progress.solvedIn(group.key).length,
-                      bestTime: widget.progress.bestTime(group.key),
-                      onTap: () => _openGroup(group),
+                    padding: const EdgeInsets.only(bottom: 14),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: <Widget>[
+                        Text(
+                          '$size×$size · $stars★',
+                          style: TextStyle(
+                            color: palette.ink,
+                            fontSize: 14,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                        const SizedBox(height: 6),
+                        Row(
+                          children: <Widget>[
+                            for (final group
+                                in widget.library.groupsForSize(size, stars))
+                              ...<Widget>[
+                              Expanded(
+                                child: _GroupTile(
+                                  palette: palette,
+                                  l10n: l10n,
+                                  group: group,
+                                  total: widget.library.countIn(group),
+                                  solved: widget.progress
+                                      .solvedIn(group.key)
+                                      .length,
+                                  bestTime:
+                                      widget.progress.bestTime(group.key),
+                                  onTap: () => _openGroup(group),
+                                ),
+                              ),
+                              if (group.difficulty != Difficulty.values.last)
+                                const SizedBox(width: 7),
+                            ],
+                          ],
+                        ),
+                      ],
                     ),
                   ),
               ],
@@ -295,8 +329,8 @@ class _SelectScreenState extends State<SelectScreen> {
   }
 }
 
-class _GroupRow extends StatelessWidget {
-  const _GroupRow({
+class _GroupTile extends StatelessWidget {
+  const _GroupTile({
     required this.palette,
     required this.l10n,
     required this.group,
@@ -316,68 +350,89 @@ class _GroupRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final complete = solved >= total && total > 0;
+    // A group can legitimately be empty: a 9x9 with two stars is never solvable
+    // by tier-1 techniques alone, so it has no Easy puzzles at all. Greying the
+    // tile is more honest than leaving a hole in the row.
+    final available = total > 0;
+    final complete = available && solved >= total;
 
     return Semantics(
-      button: true,
+      button: available,
       label: '${group.size}x${group.size} '
           '${group.difficulty.label(l10n)}, $solved/$total',
       child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(12),
+        onTap: available ? onTap : null,
+        borderRadius: BorderRadius.circular(11),
         child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 9),
           decoration: BoxDecoration(
-            color: palette
-                .regionTints[group.challenge % palette.regionTints.length],
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: palette.ink, width: 2),
+            color: available
+                ? palette
+                    .regionTints[group.challenge % palette.regionTints.length]
+                : palette.neighbourWash,
+            borderRadius: BorderRadius.circular(11),
+            border: Border.all(
+              color: available ? palette.ink : palette.hairline,
+              width: available ? 2 : 1,
+            ),
           ),
-          child: Row(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
             children: <Widget>[
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: <Widget>[
-                    Text(
-                      '${group.size}×${group.size} · '
-                      '${group.difficulty.label(l10n)}',
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                        color: palette.ink,
-                        fontSize: 14.5,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      '${l10n.challengeBadge(group.challenge)}'
-                      '${bestTime != null ? ' · ${l10n.selectBestTime(formatDuration(bestTime!))}' : ''}',
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(color: palette.ink, fontSize: 11.5),
-                    ),
-                  ],
+              Text(
+                group.difficulty.label(l10n),
+                textAlign: TextAlign.center,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  color: available ? palette.ink : palette.inkSoft,
+                  fontSize: 12,
+                  height: 1.15,
+                  fontWeight: FontWeight.w700,
                 ),
               ),
-              const SizedBox(width: 10),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.end,
-                children: <Widget>[
+              const SizedBox(height: 2),
+              Text(
+                available
+                    ? l10n.challengeBadge(group.challenge)
+                    : l10n.selectEmptyGroup,
+                textAlign: TextAlign.center,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  color: available ? palette.ink : palette.inkSoft,
+                  fontSize: 9.5,
+                  height: 1.15,
+                ),
+              ),
+              if (available) ...<Widget>[
+                const SizedBox(height: 3),
+                Text(
+                  '$solved/$total',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    color: palette.ink,
+                    fontSize: 11,
+                    height: 1.15,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                if (bestTime != null)
                   Text(
-                    '$solved/$total',
+                    formatDuration(bestTime!),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                     style: TextStyle(
                       color: palette.ink,
-                      fontSize: 13,
-                      fontWeight: FontWeight.w700,
+                      fontSize: 9.5,
+                      height: 1.15,
                     ),
                   ),
-                  if (complete)
-                    Icon(Icons.check_circle_rounded,
-                        color: palette.success, size: 16),
-                ],
-              ),
+                if (complete)
+                  Icon(Icons.check_circle_rounded,
+                      color: palette.success, size: 13),
+              ],
             ],
           ),
         ),

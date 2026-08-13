@@ -39,12 +39,16 @@ class PuzzleGroup {
 
 /// A puzzle plus where it came from, so progress can be recorded against it.
 class LibraryPuzzle {
-  const LibraryPuzzle(this.id, this.group, this.entry);
+  const LibraryPuzzle(this.id, this.group, this.entry, [this.number = 0]);
 
   /// Stable within a given bank build.
   final String id;
   final PuzzleGroup group;
   final BankEntry entry;
+
+  /// One-based position within its group. What the player sees as "#55", and
+  /// what makes a shared result point at a specific board.
+  final int number;
 }
 
 /// The whole shipped bank, grouped for the selection screen.
@@ -71,11 +75,10 @@ class PuzzleLibrary {
       final entries = bank.entries;
       for (var index = 0; index < entries.length; index++) {
         final entry = entries[index];
-        final group =
-            PuzzleGroup(size, stars, Difficulty.of(entry.tier));
-        byGroup
-            .putIfAbsent(group.key, () => <LibraryPuzzle>[])
-            .add(LibraryPuzzle('${size}x$size#$index', group, entry));
+        final group = PuzzleGroup(size, stars, Difficulty.of(entry.tier));
+        final bucket = byGroup.putIfAbsent(group.key, () => <LibraryPuzzle>[]);
+        bucket.add(LibraryPuzzle(
+            '${size}x$size#$index', group, entry, bucket.length + 1));
       }
     }
 
@@ -108,19 +111,16 @@ class PuzzleLibrary {
       List<LibraryPuzzle>.unmodifiable(
           _byGroup[group.key] ?? const <LibraryPuzzle>[]);
 
-  /// Groups ordered by how hard they actually are, across sizes.
+  /// Groups for one board size, in difficulty order.
   ///
-  /// Ordering by board size hides the thing the challenge number exists to
-  /// reveal: a 6x6 Extreme is genuinely easier than a 9x9 Medium, and a hub
-  /// sorted by size argues the opposite every time it is opened.
-  List<PuzzleGroup> get groupsByChallenge {
-    final all = groups.where((group) => countIn(group) > 0).toList();
-    all.sort((a, b) {
-      final byChallenge = a.challenge.compareTo(b.challenge);
-      return byChallenge != 0 ? byChallenge : a.size.compareTo(b.size);
-    });
-    return all;
-  }
+  /// The hub is laid out as one ROW per size — a flat list ordered by challenge
+  /// was tried and destroyed the grouping the eye relies on. The challenge
+  /// number still does its job of making sizes comparable; it just does not
+  /// need to dictate the layout to do it.
+  List<PuzzleGroup> groupsForSize(int size, int stars) => <PuzzleGroup>[
+        for (final difficulty in Difficulty.values)
+          PuzzleGroup(size, stars, difficulty),
+      ];
 
   /// Picks a puzzle the player has not finished yet.
   ///

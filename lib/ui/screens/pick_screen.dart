@@ -3,16 +3,18 @@ import 'package:flutter/material.dart';
 import '../../data/progress_repository.dart';
 import '../../data/puzzle_library.dart';
 import '../../l10n/app_localizations.dart';
-import '../theme/challenge.dart';
+import '../format.dart';
 import '../theme/nodro_theme.dart';
+import '../widgets/board_thumbnail.dart';
 
 enum _Filter { all, unsolved, solved }
 
-/// Picking a specific puzzle from a group, rather than being handed one.
+/// Picking a specific puzzle from a group, by looking at it.
 ///
-/// Random is the default path and stays one tap away; this exists for the
-/// player who wants to come back to number 214, or to hunt down the ones they
-/// have not finished.
+/// A grid of real board thumbnails rather than a list of numbers: within a
+/// group every puzzle carries the same size and the same tier, so a repeated
+/// "Challenge 6/10" on each row is pure noise — what actually distinguishes one
+/// board from another is its shape.
 class PickScreen extends StatefulWidget {
   const PickScreen({
     super.key,
@@ -64,7 +66,7 @@ class _PickScreenState extends State<PickScreen> {
         child: Column(
           children: <Widget>[
             Padding(
-              padding: const EdgeInsets.fromLTRB(12, 4, 12, 8),
+              padding: const EdgeInsets.fromLTRB(12, 4, 12, 10),
               child: Row(
                 children: <Widget>[
                   for (final option in <(_Filter, String)>[
@@ -86,29 +88,108 @@ class _PickScreenState extends State<PickScreen> {
               ),
             ),
             Expanded(
-              // ListView.builder, not a giant Column: a group can hold 845
-              // puzzles and building them all would stall the first frame.
-              child: ListView.builder(
-                itemCount: visible.length,
-                itemExtent: 56,
-                padding: const EdgeInsets.symmetric(horizontal: 12),
-                itemBuilder: (context, index) {
-                  final puzzle = visible[index];
-                  final isSolved = solved.contains(puzzle.id);
-                  final number = all.indexOf(puzzle) + 1;
-                  return _PuzzleRow(
-                    palette: palette,
-                    label: l10n.puzzleNumber(number),
-                    challenge: l10n.challengeBadge(globalChallenge(
-                      size: puzzle.entry.puzzle.size,
-                      stars: puzzle.entry.puzzle.starsPerUnit,
-                      tier: puzzle.entry.tier,
-                    )),
-                    solved: isSolved,
-                    onTap: () => Navigator.of(context).pop(puzzle),
+              child: LayoutBuilder(
+                builder: (context, constraints) {
+                  final columns = (constraints.maxWidth / 116).floor().clamp(2, 6);
+                  // GridView.builder, not a Column: a group can hold 845
+                  // boards, and building them all would stall the first frame.
+                  return GridView.builder(
+                    padding: const EdgeInsets.fromLTRB(12, 0, 12, 16),
+                    gridDelegate:
+                        SliverGridDelegateWithFixedCrossAxisCount(
+                      crossAxisCount: columns,
+                      mainAxisSpacing: 12,
+                      crossAxisSpacing: 12,
+                      childAspectRatio: 0.80,
+                    ),
+                    itemCount: visible.length,
+                    itemBuilder: (context, index) {
+                      final puzzle = visible[index];
+                      final time = widget.progress.timeFor(puzzle.id);
+                      return _PuzzleCard(
+                        palette: palette,
+                        puzzle: puzzle,
+                        solved: solved.contains(puzzle.id),
+                        label: l10n.puzzleNumber(puzzle.number),
+                        time: time == null ? '' : formatDuration(time),
+                        onTap: () => Navigator.of(context).pop(puzzle),
+                      );
+                    },
                   );
                 },
               ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _PuzzleCard extends StatelessWidget {
+  const _PuzzleCard({
+    required this.palette,
+    required this.puzzle,
+    required this.solved,
+    required this.label,
+    required this.time,
+    required this.onTap,
+  });
+
+  final NodroPalette palette;
+  final LibraryPuzzle puzzle;
+  final bool solved;
+  final String label;
+  final String time;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Semantics(
+      button: true,
+      label: label,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(10),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: <Widget>[
+            Expanded(
+              child: AspectRatio(
+                aspectRatio: 1,
+                child: LayoutBuilder(
+                  builder: (context, constraints) => Opacity(
+                    opacity: solved ? 0.45 : 1,
+                    child: BoardThumbnail(
+                      puzzle: puzzle.entry.puzzle,
+                      side: constraints.maxWidth,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(height: 4),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: <Widget>[
+                if (solved) ...<Widget>[
+                  Icon(Icons.check_rounded,
+                      color: palette.success, size: 13),
+                  const SizedBox(width: 3),
+                ],
+                Flexible(
+                  child: Text(
+                    time.isEmpty ? label : '$label · $time',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      color: solved ? palette.inkSoft : palette.ink,
+                      fontSize: 11.5,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ),
+              ],
             ),
           ],
         ),
@@ -153,54 +234,6 @@ class _FilterChip extends StatelessWidget {
             fontWeight: FontWeight.w700,
           ),
         ),
-      ),
-    );
-  }
-}
-
-class _PuzzleRow extends StatelessWidget {
-  const _PuzzleRow({
-    required this.palette,
-    required this.label,
-    required this.challenge,
-    required this.solved,
-    required this.onTap,
-  });
-
-  final NodroPalette palette;
-  final String label;
-  final String challenge;
-  final bool solved;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return InkWell(
-      onTap: onTap,
-      child: Row(
-        children: <Widget>[
-          Icon(
-            solved ? Icons.check_circle_rounded : Icons.circle_outlined,
-            color: solved ? palette.success : palette.hairline,
-            size: 20,
-          ),
-          const SizedBox(width: 12),
-          Text(
-            label,
-            style: TextStyle(
-              color: palette.ink,
-              fontSize: 14,
-              fontWeight: FontWeight.w700,
-            ),
-          ),
-          const Spacer(),
-          Text(
-            challenge,
-            style: TextStyle(color: palette.inkSoft, fontSize: 12),
-          ),
-          const SizedBox(width: 8),
-          Icon(Icons.chevron_right_rounded, color: palette.inkSoft, size: 20),
-        ],
       ),
     );
   }
