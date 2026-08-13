@@ -125,6 +125,49 @@ These were decided by the user in Phase 0. Do not re-litigate them.
   milestone-1 scope and sits in `BACKLOG.md` with the current performance analysis.
   **The engine's definition of done is Layer 1 passing against the bank — not the 300 ms.**
 
+## D17 — Global challenge, 1..10
+
+The four difficulty labels are a convention *within* a board size, and that is correct: an
+"Extreme" 6x6 really is easier than a "Medium" 9x9, here and in every other app in the genre.
+The labels are not wrong, they are silent. So the labels and their classification are
+**unchanged**, and a second axis sits beside them.
+
+```
+raw = 1
+    + (size  - 6) * 0.7     // more cells, more to hold in your head
+    + (stars - 1) * 1.8     // two stars per unit is a different game
+    + (tier  - 1) * 1.05    // the deduction the puzzle actually demands
+challenge = round(raw), clamped to 1..10
+```
+
+Star count outweighs board size on purpose: one star to two changes the reasoning, 6x6 to 8x8
+mostly adds bookkeeping. Deterministic. Implemented in `lib/ui/theme/challenge.dart`, shown in
+the hub, on the play screen and in the share text, and the hub is ordered by it rather than by
+board size — ordering by size argues the very thing this number exists to correct.
+
+## D18 — Automatic marking, three levels, `full` by default
+
+Placing a star eliminates its eight neighbours AND any row, column or region that has met its
+quota. Offered as a setting because the genre's leaders differ: the most popular Star Battle app
+makes it optional, LinkedIn's Queens always marks, and the literature recommends offering both.
+
+**The rule is written once, in terms of the unit's QUOTA.** "A star clears its row" is right on
+a one-star board and wrong on a two-star board, and the bug would only ever appear on the larger
+puzzles. `test/ui/auto_mark_test.dart` pins both families, and was verified to fail against the
+naive rule before the correct one was written.
+
+Automatic marks are **derived, never stored**: they are recomputed from the manual stars on every
+snapshot. That is what makes "removing a star removes its marks but not mine" fall out for free
+instead of needing bookkeeping, and it is why changing the setting is a recompute rather than a
+migration.
+
+## D19 — A daily challenge is daily
+
+Finishing locks it until the local date turns over. Reopening shows the stored result. Only the
+first finish counts toward the streak or the best time. A finished daily can be replayed as
+**practice**: no clock, nothing recorded, no effect on the streak, and it never overwrites the
+autosaved game.
+
 ## W8 — No UI stage is done without an end-to-end test that asserts on PIXELS
 
 Every interface stage needs a test that walks the complete user path and checks what was

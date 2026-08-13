@@ -56,10 +56,24 @@ class _NodroAppState extends State<NodroApp> {
     }
   }
 
+  /// Flips the theme.
+  ///
+  /// It deliberately does NOT ask `Theme.of(context)`: this State sits ABOVE
+  /// the MaterialApp, so that lookup returns Flutter's default theme rather
+  /// than the app's. It always reported "light", so the button switched to dark
+  /// once and then did nothing for the rest of the session. The mode is tracked
+  /// here instead, and "system" resolves against the platform brightness.
   void _toggleTheme() {
     setState(() {
-      final isDark = Theme.of(context).brightness == Brightness.dark;
-      _themeMode = isDark ? ThemeMode.light : ThemeMode.dark;
+      _themeMode = switch (_themeMode) {
+        ThemeMode.system =>
+          WidgetsBinding.instance.platformDispatcher.platformBrightness ==
+                  Brightness.dark
+              ? ThemeMode.light
+              : ThemeMode.dark,
+        ThemeMode.light => ThemeMode.dark,
+        ThemeMode.dark => ThemeMode.light,
+      };
     });
   }
 

@@ -61,8 +61,10 @@ class HintEngine {
   List<CellRef> mistakesIn(PlayGrid grid) {
     final truthStars = _truth.starIndices.toSet();
     final wrong = <CellRef>[];
-    for (var index = 0; index < grid.cells.length; index++) {
-      final state = grid.stateAt(index);
+    for (var index = 0; index < grid.manual.length; index++) {
+      // Only the player's own marks can be a mistake. Automatic eliminations
+      // follow from the stars, so blaming them would point at a symptom.
+      final state = grid.manual[index];
       final isTrueStar = truthStars.contains(index);
       if (state == CellState.star && !isTrueStar) {
         wrong.add(CellRef.fromIndex(index, puzzle.size));
@@ -85,10 +87,16 @@ class HintEngine {
       return MistakeHint(mistakes);
     }
 
-    // Every mark the player has made is correct, so it is safe to hand them to
-    // the solver as proven facts and ask what it would do next.
+    // Every mark on the board is correct, so it is safe to hand them to the
+    // solver as proven facts and ask what it would do next.
+    //
+    // Note this reads `stateAt`, the VISIBLE state, which includes automatic
+    // marks. Feeding it the manual layer instead would make the engine offer
+    // eliminations the board has already drawn — a hint proposing something the
+    // player can plainly see is worse than no hint, because it teaches that
+    // hints are not worth reading.
     final board = StarBattleBoard(puzzle);
-    for (var index = 0; index < grid.cells.length; index++) {
+    for (var index = 0; index < grid.manual.length; index++) {
       switch (grid.stateAt(index)) {
         case CellState.star:
           board.placeStar(index);

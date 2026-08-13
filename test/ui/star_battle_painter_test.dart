@@ -58,7 +58,7 @@ void main() {
         reason: 'the older snapshot must be untouched — sharing one mutable '
             'list between frames is precisely what broke the board');
     expect(withStar.starCount, 1);
-    expect(identical(empty.cells, withStar.cells), isFalse);
+    expect(identical(empty.manual, withStar.manual), isFalse);
   });
 
   test('a star shades its eight neighbours and nothing further', () {

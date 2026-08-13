@@ -128,3 +128,12 @@ paralela sozinha estourou o orçamento de tempo inteiro antes do corte agir. O c
 consertado (rodadas menores), mas o lote não foi refeito, de propósito.
 
 Quando voltar: rodar `dart run tool/generate_bank.dart --max-minutes 45` e deixar trabalhando.
+## Trilha de progressão por níveis — depois dos outros tipos de puzzle
+
+Ideia boa, e já existe no plano original como "trilha de aprendizado" agrupada pela técnica que
+cada puzzle ensina. Fica para depois porque com **um** tipo de puzzle a trilha fica magra e
+repetitiva: as 9 técnicas de Star Battle não sustentam uma progressão longa sozinhas.
+
+Ganha sentido quando Slitherlink e Shikaku existirem — aí a trilha atravessa gêneros e a mesma
+ideia (confinamento, contagem de cota) reaparece com roupa diferente, que é justamente o que faz
+uma trilha ensinar em vez de repetir.

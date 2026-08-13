@@ -1,4 +1,6 @@
 import '../engine/core/deterministic_random.dart';
+import '../engine/core/technique_tier.dart';
+import '../ui/theme/challenge.dart';
 import '../ui/theme/difficulty.dart';
 import 'puzzle_bank.dart';
 
@@ -13,6 +15,17 @@ class PuzzleGroup {
   /// Stable identity for stored progress. Uses names rather than indices so
   /// reordering an enum never silently reassigns someone's history.
   String get key => '${size}x$size.${difficulty.storageKey}';
+
+  /// The 1..10 axis that makes groups comparable across sizes.
+  ///
+  /// A group holds one tier band, so the band's lowest tier is used — a group
+  /// needs one number, and taking the easiest entry keeps the label honest
+  /// about what the player will most often meet.
+  int get challenge => globalChallenge(
+        size: size,
+        stars: stars,
+        tier: TechniqueTier.fromLevel(difficulty.tiers.first),
+      );
 
   @override
   bool operator ==(Object other) =>
@@ -90,6 +103,24 @@ class PuzzleLibrary {
       ];
 
   int countIn(PuzzleGroup group) => _byGroup[group.key]?.length ?? 0;
+
+  List<LibraryPuzzle> inGroup(PuzzleGroup group) =>
+      List<LibraryPuzzle>.unmodifiable(
+          _byGroup[group.key] ?? const <LibraryPuzzle>[]);
+
+  /// Groups ordered by how hard they actually are, across sizes.
+  ///
+  /// Ordering by board size hides the thing the challenge number exists to
+  /// reveal: a 6x6 Extreme is genuinely easier than a 9x9 Medium, and a hub
+  /// sorted by size argues the opposite every time it is opened.
+  List<PuzzleGroup> get groupsByChallenge {
+    final all = groups.where((group) => countIn(group) > 0).toList();
+    all.sort((a, b) {
+      final byChallenge = a.challenge.compareTo(b.challenge);
+      return byChallenge != 0 ? byChallenge : a.size.compareTo(b.size);
+    });
+    return all;
+  }
 
   /// Picks a puzzle the player has not finished yet.
   ///

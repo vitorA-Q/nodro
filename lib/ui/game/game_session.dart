@@ -16,8 +16,16 @@ class GameSession {
     int? cursor,
     this.elapsedSeconds = 0,
     this.hintsUsed = 0,
-  })  : _history = history ?? <PlayGrid>[PlayGrid.empty(puzzle.entry.puzzle)],
+    AutoMarkLevel autoMark = AutoMarkLevel.full,
+    this.isPractice = false,
+  })  : _history = history ??
+            <PlayGrid>[PlayGrid.empty(puzzle.entry.puzzle, autoMark)],
         _cursor = cursor ?? 0;
+
+  /// A replay of an already-finished daily. The clock does not run, nothing is
+  /// recorded, and the streak is untouched — so a second go is practice, not a
+  /// second score.
+  final bool isPractice;
 
   final LibraryPuzzle puzzle;
   final List<PlayGrid> _history;
@@ -53,7 +61,19 @@ class GameSession {
   }
 
   /// Wipes the board but keeps the history, so clearing is itself undoable.
-  void clear() => push(PlayGrid.empty(puzzle.entry.puzzle));
+  void clear() =>
+      push(PlayGrid.empty(puzzle.entry.puzzle, grid.autoMark));
+
+  /// Changes the marking level for the whole history at once.
+  ///
+  /// Automatic marks are derived, never stored, so switching level is a
+  /// recompute rather than a migration — and the player's own marks are
+  /// untouched by definition.
+  void setAutoMark(AutoMarkLevel level) {
+    for (var i = 0; i < _history.length; i++) {
+      _history[i] = _history[i].withAutoMark(level);
+    }
+  }
 
   /// Steps back until the board holds no mistake, used by the hint engine when
   /// the player has painted themselves into a corner.
@@ -73,9 +93,11 @@ class GameSession {
   /// of kilobytes — small enough to write on every move without thinking about
   /// it, which is what makes autosave reliable rather than periodic.
   String serialize() {
+    // The MANUAL layer only. Automatic marks are derived, so storing them would
+    // both waste space and let a stale copy survive a settings change.
     final states = _history.map((grid) {
       final buffer = StringBuffer();
-      for (final state in grid.cells) {
+      for (final state in grid.manual) {
         buffer.write(switch (state) {
           CellState.unknown => '.',
           CellState.star => '*',
@@ -98,7 +120,8 @@ class GameSession {
   /// Rebuilds a session, or returns null when the blob does not match anything
   /// in the current library — a bank rebuild shifts ids, and losing one saved
   /// game is far better than crashing on startup.
-  static GameSession? deserialize(String blob, PuzzleLibrary library) {
+  static GameSession? deserialize(String blob, PuzzleLibrary library,
+      {AutoMarkLevel autoMark = AutoMarkLevel.full}) {
     final parts = blob.split('|');
     if (parts.length != 6 || parts[0] != _prefix) {
       return null;
@@ -114,7 +137,7 @@ class GameSession {
       if (chunk.length != cellCount) {
         return null;
       }
-      var grid = PlayGrid.empty(puzzle.entry.puzzle);
+      var grid = PlayGrid.empty(puzzle.entry.puzzle, autoMark);
       for (var i = 0; i < chunk.length; i++) {
         switch (chunk[i]) {
           case '*':

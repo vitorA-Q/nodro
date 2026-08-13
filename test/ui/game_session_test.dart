@@ -104,7 +104,7 @@ void main() {
     expect(restored, isNotNull);
     expect(restored!.elapsedSeconds, 137);
     expect(restored.hintsUsed, 2);
-    expect(restored.grid.cells, session.grid.cells);
+    expect(restored.grid.manual, session.grid.manual);
     expect(restored.canUndo, isTrue);
     expect(restored.canRedo, isTrue,
         reason: 'the redo branch must survive a reload too — "exactly where I '

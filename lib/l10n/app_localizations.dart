@@ -392,6 +392,144 @@ abstract class AppLocalizations {
   /// **'No named technique applies here.'**
   String get hintStuck;
 
+  /// A 1..10 number comparable across board sizes, shown beside the difficulty label.
+  ///
+  /// In en, this message translates to:
+  /// **'Challenge {value}/10'**
+  String challengeBadge(int value);
+
+  /// No description provided for @autoMarkTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Automatic marking'**
+  String get autoMarkTitle;
+
+  /// No description provided for @autoMarkOff.
+  ///
+  /// In en, this message translates to:
+  /// **'Off'**
+  String get autoMarkOff;
+
+  /// No description provided for @autoMarkOffBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Nothing is marked for you.'**
+  String get autoMarkOffBody;
+
+  /// No description provided for @autoMarkNeighbours.
+  ///
+  /// In en, this message translates to:
+  /// **'Neighbours'**
+  String get autoMarkNeighbours;
+
+  /// No description provided for @autoMarkNeighboursBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Cross out the eight cells around each star.'**
+  String get autoMarkNeighboursBody;
+
+  /// No description provided for @autoMarkFull.
+  ///
+  /// In en, this message translates to:
+  /// **'Full'**
+  String get autoMarkFull;
+
+  /// No description provided for @autoMarkFullBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Neighbours, plus any row, column or region that already has all its stars.'**
+  String get autoMarkFullBody;
+
+  /// No description provided for @dailyLockedTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Today\'s challenge is done'**
+  String get dailyLockedTitle;
+
+  /// No description provided for @dailyLockedBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Come back tomorrow for a new one.'**
+  String get dailyLockedBody;
+
+  /// Replays a finished daily without a clock and without affecting the streak.
+  ///
+  /// In en, this message translates to:
+  /// **'Practise this puzzle'**
+  String get practiceThis;
+
+  /// No description provided for @practiceBanner.
+  ///
+  /// In en, this message translates to:
+  /// **'Practice · not scored'**
+  String get practiceBanner;
+
+  /// No description provided for @hintTapWhy.
+  ///
+  /// In en, this message translates to:
+  /// **'Tap to see why'**
+  String get hintTapWhy;
+
+  /// No description provided for @hintTapApply.
+  ///
+  /// In en, this message translates to:
+  /// **'Tap to apply it'**
+  String get hintTapApply;
+
+  /// No description provided for @hintClose.
+  ///
+  /// In en, this message translates to:
+  /// **'Close'**
+  String get hintClose;
+
+  /// No description provided for @pickRandom.
+  ///
+  /// In en, this message translates to:
+  /// **'Random'**
+  String get pickRandom;
+
+  /// No description provided for @pickFromList.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose from the list'**
+  String get pickFromList;
+
+  /// No description provided for @pickTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'{size}×{size} · {difficulty}'**
+  String pickTitle(int size, String difficulty);
+
+  /// No description provided for @filterAll.
+  ///
+  /// In en, this message translates to:
+  /// **'All'**
+  String get filterAll;
+
+  /// No description provided for @filterUnsolved.
+  ///
+  /// In en, this message translates to:
+  /// **'Unsolved'**
+  String get filterUnsolved;
+
+  /// No description provided for @filterSolved.
+  ///
+  /// In en, this message translates to:
+  /// **'Solved'**
+  String get filterSolved;
+
+  /// No description provided for @puzzleNumber.
+  ///
+  /// In en, this message translates to:
+  /// **'#{number}'**
+  String puzzleNumber(int number);
+
+  /// No description provided for @solvedInWithHints.
+  ///
+  /// In en, this message translates to:
+  /// **'{time} · {hints, plural, =0{no hints} =1{1 hint} other{{hints} hints}}'**
+  String solvedInWithHints(String time, int hints);
+
   /// No description provided for @techName_sbAdjacencyElimination.
   ///
   /// In en, this message translates to:

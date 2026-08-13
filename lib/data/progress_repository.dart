@@ -29,8 +29,52 @@ abstract class ProgressRepository {
   /// Dates, as `yyyy-mm-dd`, on which the daily challenge was completed.
   Set<String> dailyCompletions();
 
-  Future<void> recordDaily(String isoDate);
+  /// The stored result for a day, or null if it was never finished.
+  ///
+  /// A daily challenge is daily: once it is done it stays done until the local
+  /// date turns over, and reopening shows this instead of a fresh board.
+  DailyResult? dailyResult(String isoDate);
+
+  Future<void> recordDaily(String isoDate, DailyResult result);
+
+  /// How much the board marks on the player's behalf.
+  AutoMarkSetting autoMark();
+
+  Future<void> setAutoMark(AutoMarkSetting setting);
 }
+
+/// What the player scored on a given day.
+class DailyResult {
+  const DailyResult({
+    required this.seconds,
+    required this.hintsUsed,
+    required this.puzzleId,
+  });
+
+  final int seconds;
+  final int hintsUsed;
+  final String puzzleId;
+
+  Map<String, Object> toJson() => <String, Object>{
+        's': seconds,
+        'h': hintsUsed,
+        'p': puzzleId,
+      };
+
+  static DailyResult? fromJson(Object? raw) {
+    if (raw is! Map<String, dynamic>) {
+      return null;
+    }
+    return DailyResult(
+      seconds: raw['s'] as int? ?? 0,
+      hintsUsed: raw['h'] as int? ?? 0,
+      puzzleId: raw['p'] as String? ?? '',
+    );
+  }
+}
+
+/// Stored as a plain string so the storage layer never imports UI code.
+typedef AutoMarkSetting = String;
 
 /// Backed by shared_preferences: localStorage on the web, SharedPreferences on
 /// Android. Values are kept in memory after [load] so reads are synchronous —
@@ -41,12 +85,13 @@ class SharedPrefsProgressRepository implements ProgressRepository {
   static const String _solvedKey = 'nodro.solved.v1';
   static const String _bestKey = 'nodro.best.v1';
   static const String _gameKey = 'nodro.game.v1';
-  static const String _dailyKey = 'nodro.daily.v1';
+  static const String _dailyKey = 'nodro.daily.v2';
+  static const String _autoMarkKey = 'nodro.automark.v1';
 
   SharedPreferences? _prefs;
   Map<String, Set<String>> _solved = <String, Set<String>>{};
   Map<String, int> _best = <String, int>{};
-  Set<String> _daily = <String>{};
+  Map<String, DailyResult> _daily = <String, DailyResult>{};
 
   @override
   Future<void> load() async {
@@ -69,14 +114,19 @@ class SharedPrefsProgressRepository implements ProgressRepository {
       }
       final rawDaily = _prefs!.getString(_dailyKey);
       if (rawDaily != null) {
-        _daily = (jsonDecode(rawDaily) as List<dynamic>)
-            .map((e) => e as String)
-            .toSet();
+        final decoded = jsonDecode(rawDaily) as Map<String, dynamic>;
+        _daily = <String, DailyResult>{};
+        decoded.forEach((key, value) {
+          final result = DailyResult.fromJson(value);
+          if (result != null) {
+            _daily[key] = result;
+          }
+        });
       }
     } on Object {
       _solved = <String, Set<String>>{};
       _best = <String, int>{};
-      _daily = <String>{};
+      _daily = <String, DailyResult>{};
     }
   }
 
@@ -115,12 +165,31 @@ class SharedPrefsProgressRepository implements ProgressRepository {
   }
 
   @override
-  Set<String> dailyCompletions() => _daily;
+  Set<String> dailyCompletions() => _daily.keys.toSet();
 
   @override
-  Future<void> recordDaily(String isoDate) async {
-    _daily.add(isoDate);
-    await _prefs?.setString(_dailyKey, jsonEncode(_daily.toList()));
+  DailyResult? dailyResult(String isoDate) => _daily[isoDate];
+
+  @override
+  Future<void> recordDaily(String isoDate, DailyResult result) async {
+    // First finish of the day wins. Replaying must not move the streak or the
+    // best time, or the daily stops being daily.
+    if (_daily.containsKey(isoDate)) {
+      return;
+    }
+    _daily[isoDate] = result;
+    await _prefs?.setString(
+        _dailyKey,
+        jsonEncode(
+            _daily.map((key, value) => MapEntry(key, value.toJson()))));
+  }
+
+  @override
+  AutoMarkSetting autoMark() => _prefs?.getString(_autoMarkKey) ?? 'full';
+
+  @override
+  Future<void> setAutoMark(AutoMarkSetting setting) async {
+    await _prefs?.setString(_autoMarkKey, setting);
   }
 }
 
@@ -128,8 +197,9 @@ class SharedPrefsProgressRepository implements ProgressRepository {
 class InMemoryProgressRepository implements ProgressRepository {
   final Map<String, Set<String>> _solved = <String, Set<String>>{};
   final Map<String, int> _best = <String, int>{};
-  final Set<String> _daily = <String>{};
+  final Map<String, DailyResult> _daily = <String, DailyResult>{};
   String? _game;
+  AutoMarkSetting _autoMark = 'full';
 
   @override
   Future<void> load() async {}
@@ -158,8 +228,20 @@ class InMemoryProgressRepository implements ProgressRepository {
   Future<void> saveGame(String? blob) async => _game = blob;
 
   @override
-  Set<String> dailyCompletions() => _daily;
+  Set<String> dailyCompletions() => _daily.keys.toSet();
 
   @override
-  Future<void> recordDaily(String isoDate) async => _daily.add(isoDate);
+  DailyResult? dailyResult(String isoDate) => _daily[isoDate];
+
+  @override
+  Future<void> recordDaily(String isoDate, DailyResult result) async {
+    _daily.putIfAbsent(isoDate, () => result);
+  }
+
+  @override
+  AutoMarkSetting autoMark() => _autoMark;
+
+  @override
+  Future<void> setAutoMark(AutoMarkSetting setting) async =>
+      _autoMark = setting;
 }

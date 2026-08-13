@@ -190,6 +190,92 @@ class AppLocalizationsPt extends AppLocalizations {
   String get hintStuck => 'Nenhuma técnica nomeada se aplica aqui.';
 
   @override
+  String challengeBadge(int value) {
+    return 'Desafio $value/10';
+  }
+
+  @override
+  String get autoMarkTitle => 'Marcação automática';
+
+  @override
+  String get autoMarkOff => 'Desligada';
+
+  @override
+  String get autoMarkOffBody => 'Nada é marcado para você.';
+
+  @override
+  String get autoMarkNeighbours => 'Vizinhos';
+
+  @override
+  String get autoMarkNeighboursBody =>
+      'Marca as oito células ao redor de cada estrela.';
+
+  @override
+  String get autoMarkFull => 'Completa';
+
+  @override
+  String get autoMarkFullBody =>
+      'Vizinhos, mais toda linha, coluna ou região que já tem todas as estrelas dela.';
+
+  @override
+  String get dailyLockedTitle => 'O desafio de hoje já foi feito';
+
+  @override
+  String get dailyLockedBody => 'Volte amanhã para um novo.';
+
+  @override
+  String get practiceThis => 'Praticar este puzzle';
+
+  @override
+  String get practiceBanner => 'Prática · não conta pontos';
+
+  @override
+  String get hintTapWhy => 'Toque para entender por quê';
+
+  @override
+  String get hintTapApply => 'Toque para aplicar';
+
+  @override
+  String get hintClose => 'Fechar';
+
+  @override
+  String get pickRandom => 'Aleatório';
+
+  @override
+  String get pickFromList => 'Escolher da lista';
+
+  @override
+  String pickTitle(int size, String difficulty) {
+    return '$size×$size · $difficulty';
+  }
+
+  @override
+  String get filterAll => 'Todos';
+
+  @override
+  String get filterUnsolved => 'Não resolvidos';
+
+  @override
+  String get filterSolved => 'Resolvidos';
+
+  @override
+  String puzzleNumber(int number) {
+    return '#$number';
+  }
+
+  @override
+  String solvedInWithHints(String time, int hints) {
+    String _temp0 = intl.Intl.pluralLogic(
+      hints,
+      locale: localeName,
+      other: '$hints dicas',
+      one: '1 dica',
+      zero: 'sem dicas',
+    );
+    return '$time · $_temp0';
+  }
+
+  @override
   String get techName_sbAdjacencyElimination => 'Eliminação por vizinhança';
 
   @override

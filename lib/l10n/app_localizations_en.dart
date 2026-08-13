@@ -190,6 +190,92 @@ class AppLocalizationsEn extends AppLocalizations {
   String get hintStuck => 'No named technique applies here.';
 
   @override
+  String challengeBadge(int value) {
+    return 'Challenge $value/10';
+  }
+
+  @override
+  String get autoMarkTitle => 'Automatic marking';
+
+  @override
+  String get autoMarkOff => 'Off';
+
+  @override
+  String get autoMarkOffBody => 'Nothing is marked for you.';
+
+  @override
+  String get autoMarkNeighbours => 'Neighbours';
+
+  @override
+  String get autoMarkNeighboursBody =>
+      'Cross out the eight cells around each star.';
+
+  @override
+  String get autoMarkFull => 'Full';
+
+  @override
+  String get autoMarkFullBody =>
+      'Neighbours, plus any row, column or region that already has all its stars.';
+
+  @override
+  String get dailyLockedTitle => 'Today\'s challenge is done';
+
+  @override
+  String get dailyLockedBody => 'Come back tomorrow for a new one.';
+
+  @override
+  String get practiceThis => 'Practise this puzzle';
+
+  @override
+  String get practiceBanner => 'Practice · not scored';
+
+  @override
+  String get hintTapWhy => 'Tap to see why';
+
+  @override
+  String get hintTapApply => 'Tap to apply it';
+
+  @override
+  String get hintClose => 'Close';
+
+  @override
+  String get pickRandom => 'Random';
+
+  @override
+  String get pickFromList => 'Choose from the list';
+
+  @override
+  String pickTitle(int size, String difficulty) {
+    return '$size×$size · $difficulty';
+  }
+
+  @override
+  String get filterAll => 'All';
+
+  @override
+  String get filterUnsolved => 'Unsolved';
+
+  @override
+  String get filterSolved => 'Solved';
+
+  @override
+  String puzzleNumber(int number) {
+    return '#$number';
+  }
+
+  @override
+  String solvedInWithHints(String time, int hints) {
+    String _temp0 = intl.Intl.pluralLogic(
+      hints,
+      locale: localeName,
+      other: '$hints hints',
+      one: '1 hint',
+      zero: 'no hints',
+    );
+    return '$time · $_temp0';
+  }
+
+  @override
   String get techName_sbAdjacencyElimination => 'Neighbour elimination';
 
   @override

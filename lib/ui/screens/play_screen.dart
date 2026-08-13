@@ -15,6 +15,7 @@ import '../game/hint_engine.dart';
 import '../game/hint_text.dart';
 import '../game/play_grid.dart';
 import '../painters/star_battle_painter.dart';
+import '../theme/challenge.dart';
 import '../theme/difficulty.dart';
 import '../theme/nodro_theme.dart';
 import 'won_sheet.dart';
@@ -31,6 +32,7 @@ class PlayScreen extends StatefulWidget {
     required this.library,
     required this.progress,
     required this.isDaily,
+    this.isPractice = false,
   }) : assert(puzzle != null || resumeBlob != null,
             'a PlayScreen needs either a puzzle or a saved game to resume');
 
@@ -39,6 +41,9 @@ class PlayScreen extends StatefulWidget {
   final PuzzleLibrary library;
   final ProgressRepository progress;
   final bool isDaily;
+
+  /// Replaying a finished daily: no clock, no record, no effect on the streak.
+  final bool isPractice;
 
   @override
   State<PlayScreen> createState() => _PlayScreenState();
@@ -77,15 +82,23 @@ class _PlayScreenState extends State<PlayScreen> with TickerProviderStateMixin {
     _startSession(_initialSession());
   }
 
+  AutoMarkLevel get _level =>
+      AutoMarkLevel.fromKey(widget.progress.autoMark());
+
   GameSession _initialSession() {
     final blob = widget.resumeBlob;
     if (blob != null) {
-      final restored = GameSession.deserialize(blob, widget.library);
+      final restored =
+          GameSession.deserialize(blob, widget.library, autoMark: _level);
       if (restored != null) {
         return restored;
       }
     }
-    return GameSession(puzzle: widget.puzzle ?? _fallbackPuzzle());
+    return GameSession(
+      puzzle: widget.puzzle ?? _fallbackPuzzle(),
+      autoMark: _level,
+      isPractice: widget.isPractice,
+    );
   }
 
   LibraryPuzzle _fallbackPuzzle() =>
@@ -107,12 +120,85 @@ class _PlayScreenState extends State<PlayScreen> with TickerProviderStateMixin {
     _conflictController.value = _conflicts.isEmpty ? 0 : 1;
     _winController.value = 0;
     _clock?.cancel();
+    if (session.isPractice) {
+      // Practice runs without a clock on purpose: timing a replay of a puzzle
+      // you have already seen measures memory, not skill.
+      return;
+    }
     _clock = Timer.periodic(const Duration(seconds: 1), (_) {
       if (!mounted || _session.grid.isSolved) {
         return;
       }
       setState(() => _session.elapsedSeconds++);
     });
+  }
+
+  Future<void> _chooseAutoMark() async {
+    final l10n = AppLocalizations.of(context);
+    final palette = NodroPalette.of(context);
+    final chosen = await showModalBottomSheet<AutoMarkLevel>(
+      context: context,
+      backgroundColor: palette.paper,
+      shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+      builder: (context) => SafeArea(
+        top: false,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: <Widget>[
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 18, 20, 8),
+              child: Align(
+                alignment: Alignment.centerLeft,
+                child: Text(l10n.autoMarkTitle,
+                    style: TextStyle(
+                        color: palette.ink,
+                        fontSize: 16,
+                        fontWeight: FontWeight.w700)),
+              ),
+            ),
+            for (final option in <(AutoMarkLevel, String, String)>[
+              (AutoMarkLevel.off, l10n.autoMarkOff, l10n.autoMarkOffBody),
+              (
+                AutoMarkLevel.neighbours,
+                l10n.autoMarkNeighbours,
+                l10n.autoMarkNeighboursBody
+              ),
+              (AutoMarkLevel.full, l10n.autoMarkFull, l10n.autoMarkFullBody),
+            ])
+              ListTile(
+                onTap: () => Navigator.of(context).pop(option.$1),
+                leading: Icon(
+                  option.$1 == _session.grid.autoMark
+                      ? Icons.radio_button_checked_rounded
+                      : Icons.radio_button_unchecked_rounded,
+                  color: option.$1 == _session.grid.autoMark
+                      ? palette.accent
+                      : palette.inkSoft,
+                ),
+                title: Text(option.$2,
+                    style: TextStyle(
+                        color: palette.ink, fontWeight: FontWeight.w700)),
+                subtitle: Text(option.$3,
+                    style: TextStyle(color: palette.inkSoft, fontSize: 12)),
+              ),
+            const SizedBox(height: 12),
+          ],
+        ),
+      ),
+    );
+    if (chosen == null || !mounted) {
+      return;
+    }
+    await widget.progress.setAutoMark(chosen.storageKey);
+    if (!mounted) {
+      return;
+    }
+    setState(() {
+      _session.setAutoMark(chosen);
+      _refreshDerived();
+    });
+    unawaited(_autosave());
   }
 
   @override
@@ -125,6 +211,10 @@ class _PlayScreenState extends State<PlayScreen> with TickerProviderStateMixin {
   }
 
   Future<void> _autosave() async {
+    if (_session.isPractice) {
+      // Practice must never clobber the real game someone left half-finished.
+      return;
+    }
     if (_session.grid.isSolved) {
       await widget.progress.saveGame(null);
     } else {
@@ -180,12 +270,22 @@ class _PlayScreenState extends State<PlayScreen> with TickerProviderStateMixin {
   Future<void> _recordWin() async {
     final group = _session.puzzle.group;
     final best = widget.progress.bestTime(group.key);
-    final isBest = best == null || _session.elapsedSeconds < best;
+    final isBest = !_session.isPractice &&
+        (best == null || _session.elapsedSeconds < best);
 
-    await widget.progress.recordSolved(
-        group.key, _session.puzzle.id, _session.elapsedSeconds);
-    if (widget.isDaily) {
-      await widget.progress.recordDaily(isoDate(DateTime.now()));
+    if (!_session.isPractice) {
+      await widget.progress.recordSolved(
+          group.key, _session.puzzle.id, _session.elapsedSeconds);
+      if (widget.isDaily) {
+        await widget.progress.recordDaily(
+          isoDate(DateTime.now()),
+          DailyResult(
+            seconds: _session.elapsedSeconds,
+            hintsUsed: _session.hintsUsed,
+            puzzleId: _session.puzzle.id,
+          ),
+        );
+      }
     }
     await widget.progress.saveGame(null);
 
@@ -383,9 +483,19 @@ class _PlayScreenState extends State<PlayScreen> with TickerProviderStateMixin {
                       puzzle.size,
                       Difficulty.of(_session.puzzle.entry.tier).label(l10n),
                     ),
-                    rule: l10n.ruleLine(puzzle.starsPerUnit),
-                    elapsed: formatDuration(_session.elapsedSeconds),
+                    rule: _session.isPractice
+                        ? l10n.practiceBanner
+                        : l10n.ruleLine(puzzle.starsPerUnit),
+                    challenge: l10n.challengeBadge(globalChallenge(
+                      size: puzzle.size,
+                      stars: puzzle.starsPerUnit,
+                      tier: _session.puzzle.entry.tier,
+                    )),
+                    elapsed: _session.isPractice
+                        ? ''
+                        : formatDuration(_session.elapsedSeconds),
                     onBack: () => Navigator.of(context).maybePop(),
+                    onSettings: _chooseAutoMark,
                   ),
                 ),
                 Expanded(
@@ -430,6 +540,11 @@ class _PlayScreenState extends State<PlayScreen> with TickerProviderStateMixin {
                     counterText:
                         l10n.starsPlaced(grid.starCount, puzzle.totalStars),
                     onUndoToLastGood: _undoToLastGood,
+                    onAdvanceHint: _hintPressed,
+                    onDismissHint: () => setState(() {
+                      _hint = null;
+                      _hintStage = 0;
+                    }),
                   ),
                 ),
               ],
@@ -446,15 +561,19 @@ class _Header extends StatelessWidget {
     required this.palette,
     required this.title,
     required this.rule,
+    required this.challenge,
     required this.elapsed,
     required this.onBack,
+    required this.onSettings,
   });
 
   final NodroPalette palette;
   final String title;
   final String rule;
+  final String challenge;
   final String elapsed;
   final VoidCallback onBack;
+  final VoidCallback onSettings;
 
   @override
   Widget build(BuildContext context) {
@@ -473,13 +592,13 @@ class _Header extends StatelessWidget {
               mainAxisAlignment: MainAxisAlignment.center,
               children: <Widget>[
                 Text(
-                  title,
+                  '$title · $challenge',
                   textAlign: TextAlign.center,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: TextStyle(
                     color: palette.ink,
-                    fontSize: 14.5,
+                    fontSize: 13.5,
                     height: 1.2,
                     fontWeight: FontWeight.w700,
                   ),
@@ -501,17 +620,34 @@ class _Header extends StatelessWidget {
               ],
             ),
           ),
-          SizedBox(
-            width: 48,
-            child: Text(
-              elapsed,
-              textAlign: TextAlign.right,
-              style: TextStyle(
-                color: palette.inkSoft,
-                fontSize: 13,
-                fontFeatures: const <FontFeature>[FontFeature.tabularFigures()],
+          Column(
+            mainAxisSize: MainAxisSize.min,
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: <Widget>[
+              if (elapsed.isNotEmpty)
+                Text(
+                  elapsed,
+                  style: TextStyle(
+                    color: palette.inkSoft,
+                    fontSize: 12,
+                    fontFeatures: const <FontFeature>[
+                      FontFeature.tabularFigures()
+                    ],
+                  ),
+                ),
+              // Reachable without leaving the puzzle on purpose: a marking
+              // setting you have to hunt for in a menu is a setting nobody
+              // finds.
+              InkWell(
+                onTap: onSettings,
+                borderRadius: BorderRadius.circular(20),
+                child: Padding(
+                  padding: const EdgeInsets.all(4),
+                  child: Icon(Icons.tune_rounded,
+                      color: palette.inkSoft, size: 20),
+                ),
               ),
-            ),
+            ],
           ),
         ],
       ),
@@ -710,6 +846,8 @@ class _Footer extends StatelessWidget {
     required this.solved,
     required this.counterText,
     required this.onUndoToLastGood,
+    required this.onAdvanceHint,
+    required this.onDismissHint,
   });
 
   final NodroPalette palette;
@@ -719,6 +857,8 @@ class _Footer extends StatelessWidget {
   final bool solved;
   final String counterText;
   final VoidCallback onUndoToLastGood;
+  final VoidCallback onAdvanceHint;
+  final VoidCallback onDismissHint;
 
   @override
   Widget build(BuildContext context) {
@@ -762,45 +902,75 @@ class _Footer extends StatelessWidget {
 
     if (current is DeductionHint) {
       final text = HintText(l10n);
-      return Padding(
-        padding: const EdgeInsets.fromLTRB(16, 6, 16, 8),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: <Widget>[
-            Text(
-              l10n.hintStepTechnique(text.name(current.deduction.techniqueId)),
-              textAlign: TextAlign.center,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: TextStyle(
-                color: palette.accent,
-                fontSize: 13.5,
-                fontWeight: FontWeight.w700,
-              ),
+      // The whole panel is the button. Telling someone to "tap to apply" while
+      // the only tappable thing sits elsewhere is a small lie the interface
+      // tells every single time a hint appears.
+      return Semantics(
+        button: true,
+        label: hintStage >= 2 ? l10n.hintTapApply : l10n.hintTapWhy,
+        child: InkWell(
+          onTap: onAdvanceHint,
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(12, 4, 12, 4),
+            child: Row(
+              children: <Widget>[
+                Expanded(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: <Widget>[
+                      Text(
+                        l10n.hintStepTechnique(
+                            text.name(current.deduction.techniqueId)),
+                        textAlign: TextAlign.center,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          color: palette.accent,
+                          fontSize: 13,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Flexible(
+                        child: Text(
+                          hintStage >= 2
+                              ? text.why(current.deduction)
+                              : l10n.hintStepLook,
+                          textAlign: TextAlign.center,
+                          maxLines: 3,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                              color: palette.ink, fontSize: 11.5, height: 1.25),
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        hintStage >= 2 ? l10n.hintTapApply : l10n.hintTapWhy,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          color: palette.accent,
+                          fontSize: 10.5,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                Semantics(
+                  button: true,
+                  label: l10n.hintClose,
+                  child: IconButton(
+                    onPressed: onDismissHint,
+                    visualDensity: VisualDensity.compact,
+                    icon: Icon(Icons.close_rounded,
+                        color: palette.inkSoft, size: 20),
+                  ),
+                ),
+              ],
             ),
-            const SizedBox(height: 3),
-            Flexible(
-              child: Text(
-                hintStage >= 2
-                    ? text.why(current.deduction)
-                    : l10n.hintStepLook,
-                textAlign: TextAlign.center,
-                maxLines: 3,
-                overflow: TextOverflow.ellipsis,
-                style: TextStyle(
-                    color: palette.ink, fontSize: 11.5, height: 1.3),
-              ),
-            ),
-            const SizedBox(height: 2),
-            Text(
-              hintStage >= 2 ? l10n.hintApply : l10n.hintNextStep,
-              style: TextStyle(
-                  color: palette.inkSoft,
-                  fontSize: 10.5,
-                  fontStyle: FontStyle.italic),
-            ),
-          ],
+          ),
         ),
       );
     }

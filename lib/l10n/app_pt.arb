@@ -58,6 +58,34 @@
   "hintUndoToMistake": "Desfazer até a última jogada boa",
   "hintStuck": "Nenhuma técnica nomeada se aplica aqui.",
 
+  "challengeBadge": "Desafio {value}/10",
+
+  "autoMarkTitle": "Marcação automática",
+  "autoMarkOff": "Desligada",
+  "autoMarkOffBody": "Nada é marcado para você.",
+  "autoMarkNeighbours": "Vizinhos",
+  "autoMarkNeighboursBody": "Marca as oito células ao redor de cada estrela.",
+  "autoMarkFull": "Completa",
+  "autoMarkFullBody": "Vizinhos, mais toda linha, coluna ou região que já tem todas as estrelas dela.",
+
+  "dailyLockedTitle": "O desafio de hoje já foi feito",
+  "dailyLockedBody": "Volte amanhã para um novo.",
+  "practiceThis": "Praticar este puzzle",
+  "practiceBanner": "Prática · não conta pontos",
+
+  "hintTapWhy": "Toque para entender por quê",
+  "hintTapApply": "Toque para aplicar",
+  "hintClose": "Fechar",
+
+  "pickRandom": "Aleatório",
+  "pickFromList": "Escolher da lista",
+  "pickTitle": "{size}×{size} · {difficulty}",
+  "filterAll": "Todos",
+  "filterUnsolved": "Não resolvidos",
+  "filterSolved": "Resolvidos",
+  "puzzleNumber": "#{number}",
+  "solvedInWithHints": "{time} · {hints, plural, =0{sem dicas} =1{1 dica} other{{hints} dicas}}",
+
   "techName_sbAdjacencyElimination": "Eliminação por vizinhança",
   "techWhy_sbAdjacencyElimination": "Há uma estrela em {starCell}. Estrelas nunca se tocam, nem na diagonal, então nenhuma das {count} células marcadas pode ter uma.",
 

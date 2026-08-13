@@ -235,7 +235,10 @@ class StarBattlePainter extends CustomPainter {
         if (state == CellState.star) {
           _paintStar(canvas, centre, cell, index, stars);
         } else {
-          _paintCross(canvas, centre, cell * 0.17);
+          // Marks the board made are drawn lighter than the player's own, so
+          // "what did I decide" stays readable at a glance.
+          _paintCross(canvas, centre, cell * 0.17,
+              faded: grid.isAuto(index));
         }
       }
     }
@@ -290,11 +293,18 @@ class StarBattlePainter extends CustomPainter {
     );
   }
 
-  void _paintCross(Canvas canvas, Offset centre, double radius) {
+  void _paintCross(Canvas canvas, Offset centre, double radius,
+      {bool faded = false}) {
     final paint = Paint()
-      ..color = palette.markGrey
-      ..strokeWidth = math.max(1.6, radius * 0.26)
+      ..color = faded
+          ? palette.markGrey.withValues(alpha: 0.45)
+          : palette.markGrey
+      ..strokeWidth =
+          math.max(faded ? 1.2 : 1.6, radius * (faded ? 0.18 : 0.26))
       ..strokeCap = StrokeCap.round;
+    if (faded) {
+      radius *= 0.78;
+    }
     canvas.drawLine(centre.translate(-radius, -radius),
         centre.translate(radius, radius), paint);
     canvas.drawLine(centre.translate(radius, -radius),

@@ -2,60 +2,180 @@ import '../../engine/puzzles/star_battle/board.dart';
 import '../../engine/puzzles/star_battle/model.dart';
 import '../../engine/puzzles/star_battle/rules.dart';
 
+/// How much the board marks for the player.
+///
+/// The middle setting is the default. Marking nothing makes the game hostile to
+/// a newcomer; marking everything is what the genre's most popular apps do and
+/// is why they are approachable — so the answer is to offer both rather than to
+/// pick a side.
+enum AutoMarkLevel {
+  /// Nothing is marked. For the purist.
+  off,
+
+  /// Only the eight cells around a star.
+  neighbours,
+
+  /// Neighbours, plus any row, column or region that has met its quota.
+  full;
+
+  String get storageKey => name;
+
+  static AutoMarkLevel fromKey(String? key) {
+    for (final level in AutoMarkLevel.values) {
+      if (level.name == key) {
+        return level;
+      }
+    }
+    return AutoMarkLevel.full;
+  }
+}
+
 /// The player's marks on a board, as an immutable snapshot.
 ///
-/// ## Why immutable, and why that was a bug fix
+/// ## Two layers, one derived
+///
+/// [manual] is what the player put down. Automatic eliminations are NOT stored:
+/// they are recomputed from the manual stars every time. That is what makes
+/// "removing a star removes its automatic marks but not mine" fall out for
+/// free, instead of needing bookkeeping about which star produced which mark.
+///
+/// ## Why immutable
 ///
 /// Stage A kept one growable list and edited it in place. The painter received
-/// that same list every rebuild, so comparing "old cells" against "new cells"
-/// was comparing an object with itself: it always matched, `shouldRepaint`
-/// always said no, and nothing was ever drawn. Taps registered, the counter
-/// climbed, the board stayed blank.
-///
-/// Replacing the whole snapshot on every change makes "did anything change?"
-/// answerable by identity, which removes the entire class of bug rather than
-/// patching the one place it happened to surface. A 6x6 board is 36 enum
-/// references; copying it is free next to a frame.
+/// that same list every rebuild, so comparing old against new compared an
+/// object with itself: it always matched, `shouldRepaint` always said no, and
+/// nothing was ever drawn. Replacing the whole snapshot makes "did anything
+/// change" answerable by identity.
 class PlayGrid {
-  PlayGrid._(this.puzzle, List<CellState> cells)
-      : cells = List<CellState>.unmodifiable(cells);
+  PlayGrid._(this.puzzle, List<CellState> manual, this.autoMark)
+      : manual = List<CellState>.unmodifiable(manual),
+        _auto = _deriveAuto(puzzle, manual, autoMark);
 
-  factory PlayGrid.empty(StarBattlePuzzle puzzle) => PlayGrid._(
+  factory PlayGrid.empty(StarBattlePuzzle puzzle,
+          [AutoMarkLevel autoMark = AutoMarkLevel.full]) =>
+      PlayGrid._(
         puzzle,
         List<CellState>.filled(puzzle.size * puzzle.size, CellState.unknown),
+        autoMark,
       );
 
   static const StarBattleValidator _validator = StarBattleValidator();
 
   final StarBattlePuzzle puzzle;
-  final List<CellState> cells;
+
+  /// Exactly what the player marked, with nothing inferred.
+  final List<CellState> manual;
+
+  final AutoMarkLevel autoMark;
+
+  /// Cells eliminated by the board on the player's behalf.
+  final Set<int> _auto;
 
   int get size => puzzle.size;
 
-  /// Empty -> star -> cross -> empty.
+  /// The canonical rule, written once so it covers every star count.
+  ///
+  /// A line is only cleared when its QUOTA is met — which on a one-star board
+  /// happens with the first star, and on a two-star board only with the second.
+  /// Writing it as "a star clears its line" would be right for 1★ and wrong for
+  /// 2★, and the bug would only show up on the larger boards.
+  static Set<int> _deriveAuto(
+      StarBattlePuzzle puzzle, List<CellState> manual, AutoMarkLevel level) {
+    if (level == AutoMarkLevel.off) {
+      return const <int>{};
+    }
+    final size = puzzle.size;
+    final stars = <int>[];
+    for (var i = 0; i < manual.length; i++) {
+      if (manual[i] == CellState.star) {
+        stars.add(i);
+      }
+    }
+    if (stars.isEmpty) {
+      return const <int>{};
+    }
+
+    final auto = <int>{};
+
+    for (final star in stars) {
+      final row = star ~/ size;
+      final col = star % size;
+      for (var dr = -1; dr <= 1; dr++) {
+        for (var dc = -1; dc <= 1; dc++) {
+          if (dr == 0 && dc == 0) {
+            continue;
+          }
+          final r = row + dr;
+          final c = col + dc;
+          if (r < 0 || r >= size || c < 0 || c >= size) {
+            continue;
+          }
+          auto.add(r * size + c);
+        }
+      }
+    }
+
+    if (level == AutoMarkLevel.full) {
+      final rowCount = List<int>.filled(size, 0);
+      final colCount = List<int>.filled(size, 0);
+      final regionCount = List<int>.filled(size, 0);
+      for (final star in stars) {
+        rowCount[star ~/ size]++;
+        colCount[star % size]++;
+        regionCount[puzzle.regionOfCell[star]]++;
+      }
+      for (var cell = 0; cell < manual.length; cell++) {
+        if (rowCount[cell ~/ size] >= puzzle.starsPerUnit ||
+            colCount[cell % size] >= puzzle.starsPerUnit ||
+            regionCount[puzzle.regionOfCell[cell]] >= puzzle.starsPerUnit) {
+          auto.add(cell);
+        }
+      }
+    }
+
+    auto.removeAll(stars);
+    return auto;
+  }
+
+  /// What the player sees. Manual marks win; automatic elimination fills in.
+  CellState stateAt(int index) {
+    final own = manual[index];
+    if (own != CellState.unknown) {
+      return own;
+    }
+    return _auto.contains(index) ? CellState.empty : CellState.unknown;
+  }
+
+  /// Whether this cell was eliminated by the board rather than by the player.
+  /// Drawn lighter, so what the player did stays visible as theirs.
+  bool isAuto(int index) =>
+      manual[index] == CellState.unknown && _auto.contains(index);
+
+  /// Empty -> star -> cross -> empty, on the manual layer only.
   PlayGrid cycled(int index) {
-    final next = List<CellState>.from(cells);
-    next[index] = switch (cells[index]) {
+    final next = List<CellState>.from(manual);
+    next[index] = switch (manual[index]) {
       CellState.unknown => CellState.star,
       CellState.star => CellState.empty,
       CellState.empty => CellState.unknown,
     };
-    return PlayGrid._(puzzle, next);
+    return PlayGrid._(puzzle, next, autoMark);
   }
 
-  CellState stateAt(int index) => cells[index];
-
-  /// A new snapshot with one cell set outright. Used when restoring a saved
-  /// game, where the state is known rather than cycled into.
+  /// Sets one cell outright. Used when restoring a saved game and when a hint
+  /// applies its conclusion.
   PlayGrid withState(int index, CellState state) {
-    final next = List<CellState>.from(cells);
+    final next = List<CellState>.from(manual);
     next[index] = state;
-    return PlayGrid._(puzzle, next);
+    return PlayGrid._(puzzle, next, autoMark);
   }
+
+  PlayGrid withAutoMark(AutoMarkLevel level) =>
+      PlayGrid._(puzzle, manual, level);
 
   int get starCount {
     var count = 0;
-    for (final state in cells) {
+    for (final state in manual) {
       if (state == CellState.star) {
         count++;
       }
@@ -65,18 +185,18 @@ class PlayGrid {
 
   List<int> get starIndices {
     final result = <int>[];
-    for (var i = 0; i < cells.length; i++) {
-      if (cells[i] == CellState.star) {
+    for (var i = 0; i < manual.length; i++) {
+      if (manual[i] == CellState.star) {
         result.add(i);
       }
     }
     return result;
   }
 
-  /// Cells touching a star, including diagonally, that do not hold a star.
+  /// Cells touching a star that do not themselves hold one.
   ///
   /// Shading these is how the board teaches the no-touching rule without a
-  /// single word of instruction.
+  /// single word, and it stays even when automatic marking is off.
   Set<int> get blockedByAdjacency {
     final blocked = <int>{};
     for (final star in starIndices) {
@@ -93,7 +213,7 @@ class PlayGrid {
             continue;
           }
           final index = r * size + c;
-          if (cells[index] != CellState.star) {
+          if (manual[index] != CellState.star) {
             blocked.add(index);
           }
         }
@@ -102,11 +222,8 @@ class PlayGrid {
     return blocked;
   }
 
-  /// Stars that break a rule right now: touching another star, or sitting in a
-  /// row, column or region that already holds its quota.
-  ///
-  /// Reported per star rather than per rule so the board can mark exactly the
-  /// pieces at fault, and clear the moment the player fixes it.
+  /// Stars that break a rule right now, reported per star so the board can mark
+  /// exactly the pieces at fault and clear the moment they are fixed.
   Set<int> get conflictingStars {
     final stars = starIndices;
     final conflicts = <int>{};
@@ -146,9 +263,8 @@ class PlayGrid {
     return conflicts;
   }
 
-  /// Decided by the same validator the property tests use, so what counts as a
-  /// win on screen is exactly what counts as a win in the engine. Cross marks
-  /// are a player aid and are ignored.
+  /// Decided by the same validator the property tests use, so a win on screen
+  /// is exactly a win in the engine. Cross marks are an aid and are ignored.
   bool get isSolved {
     if (starCount != puzzle.totalStars) {
       return false;

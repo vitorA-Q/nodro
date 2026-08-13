@@ -257,7 +257,7 @@ void main() {
         reason: 'the first tap must name the technique');
 
     final painterAfterStepOne = livePainter(tester);
-    expect(painterAfterStepOne.grid.cells.every((c) => c == CellState.unknown),
+    expect(painterAfterStepOne.grid.manual.every((c) => c == CellState.unknown),
         isTrue,
         reason: 'the first tap must NOT change the board — someone who wants '
             'to learn stops here');
@@ -272,7 +272,7 @@ void main() {
     await tester.pump(const Duration(milliseconds: 300));
 
     final painterAfterStepTwo = livePainter(tester);
-    expect(painterAfterStepTwo.grid.cells.every((c) => c == CellState.unknown),
+    expect(painterAfterStepTwo.grid.manual.every((c) => c == CellState.unknown),
         isTrue,
         reason: 'the second tap explains, it does not solve');
     expect(painterAfterStepTwo.hintTargets, isNotEmpty,
@@ -285,7 +285,7 @@ void main() {
 
     expect(find.textContaining('Technique:'), findsNothing,
         reason: 'the hint clears itself once applied');
-    expect(livePainter(tester).grid.cells.where((c) => c != CellState.unknown),
+    expect(livePainter(tester).grid.manual.where((c) => c != CellState.unknown),
         isNotEmpty,
         reason: 'the third tap must actually change the board');
   });

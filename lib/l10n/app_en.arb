@@ -138,6 +138,74 @@
   "hintStuck": "No named technique applies here.",
   "@hintStuck": {},
 
+  "challengeBadge": "Challenge {value}/10",
+  "@challengeBadge": {
+    "description": "A 1..10 number comparable across board sizes, shown beside the difficulty label.",
+    "placeholders": { "value": { "type": "int" } }
+  },
+
+  "autoMarkTitle": "Automatic marking",
+  "@autoMarkTitle": {},
+  "autoMarkOff": "Off",
+  "@autoMarkOff": {},
+  "autoMarkOffBody": "Nothing is marked for you.",
+  "@autoMarkOffBody": {},
+  "autoMarkNeighbours": "Neighbours",
+  "@autoMarkNeighbours": {},
+  "autoMarkNeighboursBody": "Cross out the eight cells around each star.",
+  "@autoMarkNeighboursBody": {},
+  "autoMarkFull": "Full",
+  "@autoMarkFull": {},
+  "autoMarkFullBody": "Neighbours, plus any row, column or region that already has all its stars.",
+  "@autoMarkFullBody": {},
+
+  "dailyLockedTitle": "Today's challenge is done",
+  "@dailyLockedTitle": {},
+  "dailyLockedBody": "Come back tomorrow for a new one.",
+  "@dailyLockedBody": {},
+  "practiceThis": "Practise this puzzle",
+  "@practiceThis": {
+    "description": "Replays a finished daily without a clock and without affecting the streak."
+  },
+  "practiceBanner": "Practice · not scored",
+  "@practiceBanner": {},
+
+  "hintTapWhy": "Tap to see why",
+  "@hintTapWhy": {},
+  "hintTapApply": "Tap to apply it",
+  "@hintTapApply": {},
+  "hintClose": "Close",
+  "@hintClose": {},
+
+  "pickRandom": "Random",
+  "@pickRandom": {},
+  "pickFromList": "Choose from the list",
+  "@pickFromList": {},
+  "pickTitle": "{size}×{size} · {difficulty}",
+  "@pickTitle": {
+    "placeholders": {
+      "size": { "type": "int" },
+      "difficulty": { "type": "String" }
+    }
+  },
+  "filterAll": "All",
+  "@filterAll": {},
+  "filterUnsolved": "Unsolved",
+  "@filterUnsolved": {},
+  "filterSolved": "Solved",
+  "@filterSolved": {},
+  "puzzleNumber": "#{number}",
+  "@puzzleNumber": {
+    "placeholders": { "number": { "type": "int" } }
+  },
+  "solvedInWithHints": "{time} · {hints, plural, =0{no hints} =1{1 hint} other{{hints} hints}}",
+  "@solvedInWithHints": {
+    "placeholders": {
+      "time": { "type": "String" },
+      "hints": { "type": "int" }
+    }
+  },
+
   "techName_sbAdjacencyElimination": "Neighbour elimination",
   "@techName_sbAdjacencyElimination": {},
   "techWhy_sbAdjacencyElimination": "A star sits at {starCell}. Stars never touch, not even diagonally, so none of the {count} marked cells can hold one.",
