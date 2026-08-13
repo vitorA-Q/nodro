@@ -38,6 +38,12 @@ dependencies:
     sdk: flutter
   intl: any
 
+  # Key-value storage. Justification required by X6: it is the only store that
+  # behaves identically on web (localStorage) and Android (SharedPreferences)
+  # with no platform-specific code, which decision D10 asks for. It is kept
+  # behind ProgressRepository so swapping it later is a one-file change.
+  shared_preferences: ^2.3.2
+
 dev_dependencies:
   flutter_test:
     sdk: flutter

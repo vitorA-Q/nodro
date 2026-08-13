@@ -34,7 +34,17 @@ class StarBattlePainter extends CustomPainter {
     required this.placedCell,
     required this.conflictProgress,
     required this.winProgress,
+    this.hintEvidence = const <int>{},
+    this.hintTargets = const <int>{},
   });
+
+  /// Cells the current hint is asking the player to look at.
+  final Set<int> hintEvidence;
+
+  /// Cells the hint is about to conclude something about. Only populated once
+  /// the player has asked for the second step, so stage one really does show
+  /// where to look without giving the answer away.
+  final Set<int> hintTargets;
 
   final PlayGrid grid;
   final NodroPalette palette;
@@ -67,8 +77,38 @@ class StarBattlePainter extends CustomPainter {
     _paintNeighbourWash(canvas, n, cell);
     _paintHairlines(canvas, n, cell, size);
     _paintRegionBorders(canvas, n, cell, size);
+    _paintHintHighlights(canvas, n, cell);
     _paintMarks(canvas, n, cell);
     _paintConflicts(canvas, n, cell);
+  }
+
+  /// Evidence is washed and outlined; targets get a heavier outline. Drawn
+  /// under the marks so a star still reads clearly on top of a highlight.
+  void _paintHintHighlights(Canvas canvas, int n, double cell) {
+    if (hintEvidence.isEmpty && hintTargets.isEmpty) {
+      return;
+    }
+    void outline(Set<int> cells, double widthFactor, double fillAlpha) {
+      for (final index in cells) {
+        final rect = Rect.fromLTWH(
+            (index % n) * cell, (index ~/ n) * cell, cell, cell);
+        if (fillAlpha > 0) {
+          canvas.drawRect(
+              rect.deflate(cell * 0.04),
+              Paint()..color = palette.accent.withValues(alpha: fillAlpha));
+        }
+        canvas.drawRect(
+          rect.deflate(cell * 0.06),
+          Paint()
+            ..color = palette.accent
+            ..strokeWidth = math.max(1.8, cell * widthFactor)
+            ..style = PaintingStyle.stroke,
+        );
+      }
+    }
+
+    outline(hintEvidence.difference(hintTargets), 0.035, 0.10);
+    outline(hintTargets, 0.075, 0.20);
   }
 
   void _paintRegionFills(Canvas canvas, int n, double cell) {
@@ -291,5 +331,7 @@ class StarBattlePainter extends CustomPainter {
       old.conflictProgress != conflictProgress ||
       old.winProgress != winProgress ||
       !setEquals(old.blocked, blocked) ||
-      !setEquals(old.conflicts, conflicts);
+      !setEquals(old.conflicts, conflicts) ||
+      !setEquals(old.hintEvidence, hintEvidence) ||
+      !setEquals(old.hintTargets, hintTargets);
 }

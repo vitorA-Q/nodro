@@ -9,11 +9,79 @@
   "difficultyHard": "Difícil",
   "difficultyExtreme": "Extremo",
 
+  "unitRow": "linha",
+  "unitColumn": "coluna",
+  "unitRegion": "região",
+
+  "selectTitle": "Escolha um puzzle",
+  "selectSolvedCount": "{solved} de {total} resolvidos",
+  "selectEmptyGroup": "Nenhum ainda",
+  "selectBestTime": "Melhor {time}",
+  "dailyChallenge": "Desafio diário",
+  "dailyStreak": "{days} dias seguidos",
+  "dailyDoneToday": "Feito hoje",
+  "continueGame": "Continuar",
+
   "headerLine": "{name} · {size}×{size} · {difficulty}",
   "ruleLine": "{stars} estrela por linha, coluna e região · estrelas nunca se tocam, nem na diagonal",
   "tapHint": "Toque numa célula: vazio → estrela → X",
   "starsPlaced": "{placed} de {total} estrelas",
   "solvedMessage": "Resolvido!",
   "loadingBank": "Carregando puzzle…",
-  "loadFailed": "Não foi possível carregar o banco de puzzles."
+  "loadFailed": "Não foi possível carregar o banco de puzzles.",
+
+  "actionUndo": "Desfazer",
+  "actionRedo": "Refazer",
+  "actionClear": "Limpar",
+  "actionHint": "Dica",
+  "actionBack": "Voltar",
+  "clearConfirmTitle": "Limpar o tabuleiro?",
+  "clearConfirmBody": "Todas as marcas saem. Você ainda pode desfazer.",
+  "cancel": "Cancelar",
+
+  "wonTitle": "Resolvido",
+  "wonTime": "{time}",
+  "wonNewBest": "Novo melhor tempo",
+  "wonHintsUsed": "{count, plural, =0{Sem dicas} =1{1 dica} other{{count} dicas}}",
+  "nextPuzzle": "Próximo puzzle",
+  "backToMenu": "Escolher outro",
+  "shareResult": "Compartilhar",
+  "copiedToClipboard": "Copiado",
+
+  "hintStepTechnique": "Técnica: {name}",
+  "hintStepLook": "Olhe as células destacadas.",
+  "hintNextStep": "Explique melhor",
+  "hintApply": "Aplicar",
+  "hintDismiss": "Entendi",
+  "hintMistakeTitle": "Há um erro no tabuleiro",
+  "hintMistakeBody": "{count, plural, =1{Uma marca contradiz a solução.} other{{count} marcas contradizem a solução.}} Desfaça até antes dela e as dicas voltam a ajudar.",
+  "hintUndoToMistake": "Desfazer até a última jogada boa",
+  "hintStuck": "Nenhuma técnica nomeada se aplica aqui.",
+
+  "techName_sbAdjacencyElimination": "Eliminação por vizinhança",
+  "techWhy_sbAdjacencyElimination": "Há uma estrela em {starCell}. Estrelas nunca se tocam, nem na diagonal, então nenhuma das {count} células marcadas pode ter uma.",
+
+  "techName_sbUnitCompletionElimination": "Unidade já completa",
+  "techWhy_sbUnitCompletionElimination": "Esta {unit} {index} já tem todas as {quota} estrelas dela, então toda célula ainda aberta ali está vazia.",
+
+  "techName_sbUnitForcedFill": "Só sobraram estes lugares",
+  "techWhy_sbUnitForcedFill": "Esta {unit} {index} ainda precisa de {remaining} estrela(s) e tem exatamente esse tanto de células livres, então todas elas são estrelas.",
+
+  "techName_sbSharedNeighbourElimination": "Vizinhas em comum",
+  "techWhy_sbSharedNeighbourElimination": "A estrela que falta nesta {unit} {index} tem que estar numa das {candidateCount} células destacadas. Cada célula marcada encosta em todas elas, então onde quer que a estrela caia, elas não podem ter uma.",
+
+  "techName_sbRegionLineConfinement": "Região presa numa linha",
+  "techWhy_sbRegionLineConfinement": "Toda célula ainda aberta da região {regionIndex} está nesta {line} {lineIndex}. As {stars} estrela(s) dessa região consomem toda a cota da linha, então o resto da linha fica vazio.",
+
+  "techName_sbLineRegionConfinement": "Linha presa numa região",
+  "techWhy_sbLineRegionConfinement": "Toda célula ainda aberta desta {line} {lineIndex} está dentro da região {regionIndex}. As {stars} estrela(s) da linha saem da cota daquela região, então as outras células dela ficam vazias.",
+
+  "techName_sbCrowdingExclusion": "Apertado demais",
+  "techWhy_sbCrowdingExclusion": "Esta {unit} {index} ainda precisa de {remaining} estrelas. A célula marcada encosta em todas as outras candidatas, então pôr uma estrela ali não deixaria lugar para as demais.",
+
+  "techName_sbForwardElimination": "Um passo à frente",
+  "techWhy_sbForwardElimination": "Suponha uma estrela em {cell}. Ela apagaria as vizinhas e fecharia a linha, a coluna e a região — e aí alguma unidade não alcançaria mais a cota dela. Logo, não cabe estrela ali.",
+
+  "techName_sbRegionsWithinLines": "Regiões ocupando linhas inteiras",
+  "techWhy_sbRegionsWithinLines": "{regionCount} regiões têm todas as células abertas dentro d{line}s {lineIndices}. Essas regiões fornecem exatamente as {stars} estrelas que essas linhas precisam, então toda outra célula delas fica vazia."
 }

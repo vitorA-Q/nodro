@@ -5,14 +5,18 @@ import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:nodro/data/progress_repository.dart';
 import 'package:nodro/data/puzzle_bank.dart';
+import 'package:nodro/data/puzzle_library.dart';
 import 'package:nodro/engine/core/technique_tier.dart';
+import 'package:nodro/engine/puzzles/star_battle/board.dart';
 import 'package:nodro/engine/puzzles/star_battle/exhaustive_solver.dart';
 import 'package:nodro/engine/puzzles/star_battle/model.dart';
 import 'package:nodro/engine/puzzles/star_battle/serializer.dart';
 import 'package:nodro/l10n/app_localizations.dart';
 import 'package:nodro/ui/painters/star_battle_painter.dart';
 import 'package:nodro/ui/screens/play_screen.dart';
+import 'package:nodro/ui/theme/difficulty.dart';
 import 'package:nodro/ui/theme/nodro_theme.dart';
 
 /// Stage A acceptance: the whole path a player walks, asserted on PIXELS.
@@ -48,6 +52,12 @@ void main() {
     );
   }();
 
+  late final LibraryPuzzle libraryPuzzle = LibraryPuzzle(
+    'test#0',
+    PuzzleGroup(6, 1, Difficulty.medium),
+    entry,
+  );
+
   Future<void> pumpApp(WidgetTester tester,
       {Size surface = const Size(390, 844)}) async {
     await tester.binding.setSurfaceSize(surface);
@@ -56,10 +66,22 @@ void main() {
       localizationsDelegates: AppLocalizations.localizationsDelegates,
       supportedLocales: AppLocalizations.supportedLocales,
       theme: buildNodroTheme(Brightness.light),
-      home: PlayScreen(initialEntry: entry),
+      home: PlayScreen(
+        puzzle: libraryPuzzle,
+        library: PuzzleLibrary.fromPuzzles(<LibraryPuzzle>[libraryPuzzle]),
+        progress: InMemoryProgressRepository(),
+        isDaily: false,
+      ),
     ));
     await tester.pump();
   }
+
+  /// The board itself, by key.
+  ///
+  /// NOT `find.byType(GestureDetector).last`: once the control row existed, the
+  /// last gesture detector on screen was the hint button, and every tap in this
+  /// suite silently went to a button instead of the board.
+  final boardFinder = find.byKey(const ValueKey<String>('board'));
 
   StarBattlePainter livePainter(WidgetTester tester) => tester
       .widgetList<CustomPaint>(find.byType(CustomPaint))
@@ -114,7 +136,7 @@ void main() {
   }
 
   Future<void> tapCell(WidgetTester tester, int row, int col) async {
-    final board = find.byType(GestureDetector).last;
+    final board = boardFinder;
     final topLeft = tester.getTopLeft(board);
     final cell = tester.getSize(board).width / boardSize;
     await tester.tapAt(
@@ -222,6 +244,103 @@ void main() {
     expect(painter.blocked, containsAll(<int>[7, 8, 9, 13, 15, 19, 20, 21]));
   });
 
+  testWidgets('the hint takes three taps: name, why, then apply',
+      (tester) async {
+    await pumpApp(tester);
+
+    // Step one: the technique is named and the board is untouched.
+    await tester.tap(find.text('Hint'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
+
+    expect(find.textContaining('Technique:'), findsOneWidget,
+        reason: 'the first tap must name the technique');
+
+    final painterAfterStepOne = livePainter(tester);
+    expect(painterAfterStepOne.grid.cells.every((c) => c == CellState.unknown),
+        isTrue,
+        reason: 'the first tap must NOT change the board — someone who wants '
+            'to learn stops here');
+    expect(painterAfterStepOne.hintEvidence, isNotEmpty,
+        reason: 'step one shows where to look');
+    expect(painterAfterStepOne.hintTargets, isEmpty,
+        reason: 'step one must not reveal the conclusion');
+
+    // Step two: the reasoning is spelled out, board still untouched.
+    await tester.tap(find.text('Hint'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
+
+    final painterAfterStepTwo = livePainter(tester);
+    expect(painterAfterStepTwo.grid.cells.every((c) => c == CellState.unknown),
+        isTrue,
+        reason: 'the second tap explains, it does not solve');
+    expect(painterAfterStepTwo.hintTargets, isNotEmpty,
+        reason: 'step two may point at what the deduction concludes');
+
+    // Step three: now it acts.
+    await tester.tap(find.text('Hint'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 400));
+
+    expect(find.textContaining('Technique:'), findsNothing,
+        reason: 'the hint clears itself once applied');
+    expect(livePainter(tester).grid.cells.where((c) => c != CellState.unknown),
+        isNotEmpty,
+        reason: 'the third tap must actually change the board');
+  });
+
+  testWidgets('undo and redo work from the buttons', (tester) async {
+    await pumpApp(tester);
+
+    await tapCell(tester, 0, 0);
+    expect(find.text('1 of 6 stars'), findsOneWidget);
+    final withStar = await cellDarkness(tester, 0, 0);
+
+    await tester.tap(find.text('Undo'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
+    expect(find.text('0 of 6 stars'), findsOneWidget);
+    expect(await cellDarkness(tester, 0, 0), lessThan(withStar - 0.15),
+        reason: 'undo must erase the star from the SCREEN, not just the state');
+
+    await tester.tap(find.text('Redo'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
+    expect(find.text('1 of 6 stars'), findsOneWidget);
+    expect(await cellDarkness(tester, 0, 0), greaterThan(withStar - 0.05),
+        reason: 'redo must put it back on screen');
+  });
+
+  testWidgets('clearing asks first and can itself be undone', (tester) async {
+    await pumpApp(tester);
+    await tapCell(tester, 0, 0);
+    await tapCell(tester, 2, 2);
+    expect(find.text('2 of 6 stars'), findsOneWidget);
+
+    await tester.tap(find.text('Clear'));
+    await tester.pumpAndSettle();
+    expect(find.text('Clear the board?'), findsOneWidget,
+        reason: 'wiping the board must never happen on a stray tap');
+
+    await tester.tap(find.text('Cancel'));
+    await tester.pumpAndSettle();
+    expect(find.text('2 of 6 stars'), findsOneWidget,
+        reason: 'cancelling must leave the board alone');
+
+    await tester.tap(find.text('Clear'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Clear').last);
+    await tester.pumpAndSettle();
+    expect(find.text('0 of 6 stars'), findsOneWidget);
+
+    await tester.tap(find.text('Undo'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
+    expect(find.text('2 of 6 stars'), findsOneWidget,
+        reason: 'clearing by accident has to be recoverable');
+  });
+
   group('layout fits one screen with no scrolling', () {
     for (final entry in <String, Size>{
       'cheap Android 360x640': Size(360, 640),
@@ -236,7 +355,7 @@ void main() {
         // exception; a silent one would let a cropped board ship.
         expect(tester.takeException(), isNull);
 
-        final board = tester.getSize(find.byType(GestureDetector).last);
+        final board = tester.getSize(boardFinder);
         expect(board.width, board.height,
             reason: 'the board must always be square');
         expect(board.width, lessThanOrEqualTo(entry.value.width * 0.92 + 0.5),
@@ -246,7 +365,7 @@ void main() {
                 'squares');
         expect(board.width, greaterThan(240),
             reason: 'cells must stay big enough for a fingertip');
-        expect(tester.getBottomLeft(find.byType(GestureDetector).last).dy,
+        expect(tester.getBottomLeft(boardFinder).dy,
             lessThanOrEqualTo(entry.value.height),
             reason: 'the board must fit above the fold — the game never '
                 'scrolls');

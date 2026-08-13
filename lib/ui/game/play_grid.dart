@@ -45,6 +45,14 @@ class PlayGrid {
 
   CellState stateAt(int index) => cells[index];
 
+  /// A new snapshot with one cell set outright. Used when restoring a saved
+  /// game, where the state is known rather than cycled into.
+  PlayGrid withState(int index, CellState state) {
+    final next = List<CellState>.from(cells);
+    next[index] = state;
+    return PlayGrid._(puzzle, next);
+  }
+
   int get starCount {
     var count = 0;
     for (final state in cells) {

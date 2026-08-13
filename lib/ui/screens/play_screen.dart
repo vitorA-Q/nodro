@@ -1,271 +1,515 @@
+import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
-import '../../data/puzzle_bank.dart';
-import '../../engine/core/technique_tier.dart';
+import '../../data/progress_repository.dart';
+import '../../data/puzzle_library.dart';
+import '../../engine/core/deterministic_random.dart';
 import '../../engine/puzzles/star_battle/board.dart';
 import '../../l10n/app_localizations.dart';
+import '../format.dart';
+import '../game/game_session.dart';
+import '../game/hint_engine.dart';
+import '../game/hint_text.dart';
 import '../game/play_grid.dart';
 import '../painters/star_battle_painter.dart';
+import '../theme/difficulty.dart';
 import '../theme/nodro_theme.dart';
+import 'won_sheet.dart';
 
-/// Stage A: one fixed puzzle, one screen.
+/// Playing one puzzle: the board, unlimited undo, the clock, and hints.
 ///
-/// ## Portrait phone is the primary case
-///
-/// The final target is Android in portrait, and most puzzle-site traffic is
-/// mobile even on the web, so the layout is designed for a narrow tall screen
-/// and desktop is the adaptation — not the other way round. The board takes
-/// ~92% of the width, the rules sit in a compact band above it, and the counter
-/// sits in the lower third where a thumb can reach. Nothing ever scrolls:
-/// the board is sized from the space actually left over.
+/// Portrait phone is the primary case (see the layout note below); desktop is
+/// the adaptation.
 class PlayScreen extends StatefulWidget {
-  const PlayScreen({super.key, this.initialEntry});
+  const PlayScreen({
+    super.key,
+    this.puzzle,
+    this.resumeBlob,
+    required this.library,
+    required this.progress,
+    required this.isDaily,
+  }) : assert(puzzle != null || resumeBlob != null,
+            'a PlayScreen needs either a puzzle or a saved game to resume');
 
-  /// Skips the asset read and starts from this puzzle.
-  ///
-  /// Exists for widget tests. Reading an asset goes over a platform channel
-  /// that only answers on the real event loop, while a widget test runs on a
-  /// fake clock — mixing the two made the suite hang until its ten-minute
-  /// timeout. That the shipped bank file parses is proven independently by
-  /// `test/property/bank_verification_test.dart`, which reads the very same
-  /// files, so nothing is lost by handing the puzzle in here.
-  final BankEntry? initialEntry;
+  final LibraryPuzzle? puzzle;
+  final String? resumeBlob;
+  final PuzzleLibrary library;
+  final ProgressRepository progress;
+  final bool isDaily;
 
   @override
   State<PlayScreen> createState() => _PlayScreenState();
 }
 
-class _PlayScreenState extends State<PlayScreen>
-    with TickerProviderStateMixin {
-  /// Fixed heights so the board can be sized from what remains, which is what
-  /// guarantees the whole game fits one screen at any size.
-  /// Measured against the real font metrics, with slack. Atkinson Hyperlegible
-  /// has taller glyphs than the system default, and the first pass overflowed
-  /// by two pixels on every phone size — enough to paint the overflow stripes.
+class _PlayScreenState extends State<PlayScreen> with TickerProviderStateMixin {
+  /// Fixed bands so the board is sized from what is actually left over, which
+  /// is what guarantees the game fits one screen at any size and never scrolls.
   static const double headerHeight = 78;
-  static const double footerHeight = 116;
+  static const double controlsHeight = 62;
+  static const double footerHeight = 92;
   static const double maxBoardSide = 640;
 
-  BankEntry? _entry;
-  String? _error;
-  PlayGrid? _grid;
+  late GameSession _session;
+  late HintEngine _hints;
 
+  Timer? _clock;
   int? _placedCell;
   Set<int> _blocked = const <int>{};
   Set<int> _conflicts = const <int>{};
 
+  Hint? _hint;
+  int _hintStage = 0;
+  bool _recorded = false;
+
   late final AnimationController _placeController = AnimationController(
       vsync: this, duration: const Duration(milliseconds: 150));
-
-  /// Enters, then holds. Deliberately not a loop: something blinking at the
-  /// edge of vision for as long as a mistake exists is hostile to someone who
-  /// is trying to concentrate.
   late final AnimationController _conflictController = AnimationController(
       vsync: this, duration: const Duration(milliseconds: 150));
-
   late final AnimationController _winController = AnimationController(
       vsync: this, duration: const Duration(milliseconds: 900));
 
   @override
   void initState() {
     super.initState();
-    final injected = widget.initialEntry;
-    if (injected != null) {
-      _entry = injected;
-      _grid = PlayGrid.empty(injected.puzzle);
-    } else {
-      _load();
+    _startSession(_initialSession());
+  }
+
+  GameSession _initialSession() {
+    final blob = widget.resumeBlob;
+    if (blob != null) {
+      final restored = GameSession.deserialize(blob, widget.library);
+      if (restored != null) {
+        return restored;
+      }
     }
+    return GameSession(puzzle: widget.puzzle ?? _fallbackPuzzle());
+  }
+
+  LibraryPuzzle _fallbackPuzzle() =>
+      widget.library.pick(
+        widget.library.groups.first,
+        const <String>{},
+        DeterministicRandom(1),
+      )!;
+
+  void _startSession(GameSession session) {
+    _session = session;
+    _hints = HintEngine(session.puzzle.entry.puzzle);
+    _recorded = false;
+    _hint = null;
+    _hintStage = 0;
+    _placedCell = null;
+    _blocked = session.grid.blockedByAdjacency;
+    _conflicts = session.grid.conflictingStars;
+    _conflictController.value = _conflicts.isEmpty ? 0 : 1;
+    _winController.value = 0;
+    _clock?.cancel();
+    _clock = Timer.periodic(const Duration(seconds: 1), (_) {
+      if (!mounted || _session.grid.isSolved) {
+        return;
+      }
+      setState(() => _session.elapsedSeconds++);
+    });
   }
 
   @override
   void dispose() {
+    _clock?.cancel();
     _placeController.dispose();
     _conflictController.dispose();
     _winController.dispose();
     super.dispose();
   }
 
-  Future<void> _load() async {
-    try {
-      final bank = await PuzzleBank.load('star_battle_6x6_1');
-      final entry = bank.firstAtTier(TechniqueTier.tier2) ?? bank.entries.first;
-      if (!mounted) {
-        return;
-      }
-      setState(() {
-        _entry = entry;
-        _grid = PlayGrid.empty(entry.puzzle);
-      });
-    } on Object catch (error) {
-      if (!mounted) {
-        return;
-      }
-      setState(() => _error = error.toString());
+  Future<void> _autosave() async {
+    if (_session.grid.isSolved) {
+      await widget.progress.saveGame(null);
+    } else {
+      await widget.progress.saveGame(_session.serialize());
+    }
+  }
+
+  void _refreshDerived({int? placed}) {
+    final grid = _session.grid;
+    final hadConflicts = _conflicts.isNotEmpty;
+    _placedCell = placed;
+    _blocked = grid.blockedByAdjacency;
+    _conflicts = grid.conflictingStars;
+
+    if (_conflicts.isNotEmpty && !hadConflicts) {
+      _conflictController.forward(from: 0);
+    } else if (_conflicts.isEmpty && hadConflicts) {
+      _conflictController.reverse();
     }
   }
 
   void _tap(int index) {
-    final current = _grid;
-    if (current == null || current.isSolved) {
+    if (_session.grid.isSolved) {
       return;
     }
-
-    final next = current.cycled(index);
+    final next = _session.grid.cycled(index);
     final placedStar = next.stateAt(index) == CellState.star;
-    final hadConflicts = _conflicts.isNotEmpty;
-    final conflicts = next.conflictingStars;
 
     setState(() {
-      _grid = next;
-      _placedCell = placedStar ? index : null;
-      _blocked = next.blockedByAdjacency;
-      _conflicts = conflicts;
+      _session.push(next);
+      _hint = null;
+      _hintStage = 0;
+      _refreshDerived(placed: placedStar ? index : null);
     });
 
     if (placedStar) {
       HapticFeedback.selectionClick();
       _placeController.forward(from: 0);
     }
+    _afterMove();
+  }
 
-    if (conflicts.isNotEmpty && !hadConflicts) {
-      _conflictController.forward(from: 0);
-    } else if (conflicts.isEmpty && hadConflicts) {
-      _conflictController.reverse();
-    }
-
-    if (next.isSolved) {
+  void _afterMove() {
+    unawaited(_autosave());
+    if (_session.grid.isSolved && !_recorded) {
+      _recorded = true;
       _winController.forward(from: 0);
+      HapticFeedback.mediumImpact();
+      unawaited(_recordWin());
     }
   }
 
-  String _difficultyLabel(AppLocalizations l10n, TechniqueTier tier) =>
-      switch (tier.level) {
-        1 => l10n.difficultyEasy,
-        2 => l10n.difficultyMedium,
-        3 => l10n.difficultyHard,
-        _ => l10n.difficultyExtreme,
-      };
+  Future<void> _recordWin() async {
+    final group = _session.puzzle.group;
+    final best = widget.progress.bestTime(group.key);
+    final isBest = best == null || _session.elapsedSeconds < best;
+
+    await widget.progress.recordSolved(
+        group.key, _session.puzzle.id, _session.elapsedSeconds);
+    if (widget.isDaily) {
+      await widget.progress.recordDaily(isoDate(DateTime.now()));
+    }
+    await widget.progress.saveGame(null);
+
+    if (!mounted) {
+      return;
+    }
+    // Let the victory animation land before the sheet covers the board.
+    await Future<void>.delayed(const Duration(milliseconds: 850));
+    if (!mounted) {
+      return;
+    }
+    await showWonSheet(
+      context: context,
+      session: _session,
+      isNewBest: isBest,
+      isDaily: widget.isDaily,
+      streak: currentStreak(widget.progress.dailyCompletions(), DateTime.now()),
+      onNext: _nextPuzzle,
+    );
+  }
+
+  void _nextPuzzle() {
+    final group = _session.puzzle.group;
+    final next = widget.library.pick(
+      group,
+      widget.progress.solvedIn(group.key),
+      DeterministicRandom(DateTime.now().microsecondsSinceEpoch),
+    );
+    if (next == null) {
+      return;
+    }
+    setState(() => _startSession(GameSession(puzzle: next)));
+    unawaited(_autosave());
+  }
+
+  void _undo() {
+    setState(() {
+      _session.undo();
+      _hint = null;
+      _hintStage = 0;
+      _refreshDerived();
+    });
+    unawaited(_autosave());
+  }
+
+  void _redo() {
+    setState(() {
+      _session.redo();
+      _hint = null;
+      _hintStage = 0;
+      _refreshDerived();
+    });
+    _afterMove();
+  }
+
+  Future<void> _clear() async {
+    final l10n = AppLocalizations.of(context);
+    final palette = NodroPalette.of(context);
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: palette.paper,
+        title: Text(l10n.clearConfirmTitle,
+            style: TextStyle(color: palette.ink)),
+        content: Text(l10n.clearConfirmBody,
+            style: TextStyle(color: palette.inkSoft)),
+        actions: <Widget>[
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: Text(l10n.cancel),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            child: Text(l10n.actionClear),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) {
+      return;
+    }
+    setState(() {
+      _session.clear();
+      _hint = null;
+      _hintStage = 0;
+      _refreshDerived();
+    });
+    unawaited(_autosave());
+  }
+
+  /// Three taps, not one.
+  ///
+  /// Step one names the technique and shows where to look. Step two explains
+  /// why. Only step three touches the board. Someone who wants the answer taps
+  /// three times; someone who wants to learn stops at the first — which is the
+  /// whole difference between a hint that teaches and a hint that solves.
+  void _hintPressed() {
+    if (_session.grid.isSolved) {
+      return;
+    }
+    setState(() {
+      if (_hint == null) {
+        _hint = _hints.hintFor(_session.grid);
+        _hintStage = 1;
+        _session.hintsUsed++;
+        return;
+      }
+      final hint = _hint!;
+      if (hint is DeductionHint) {
+        if (_hintStage < 3) {
+          _hintStage++;
+        }
+        if (_hintStage == 3) {
+          _session.push(_hints.apply(_session.grid, hint.deduction));
+          _hint = null;
+          _hintStage = 0;
+          _refreshDerived();
+        }
+      } else {
+        _hint = null;
+        _hintStage = 0;
+      }
+    });
+    if (_hintStage == 0) {
+      _afterMove();
+    }
+  }
+
+  void _undoToLastGood() {
+    setState(() {
+      _session.undoUntil(_hints.isClean);
+      _hint = null;
+      _hintStage = 0;
+      _refreshDerived();
+    });
+    unawaited(_autosave());
+  }
+
+  Set<int> get _hintEvidence {
+    final hint = _hint;
+    if (hint is DeductionHint && _hintStage >= 1) {
+      return hint.deduction.highlightedCells
+          .map((ref) => ref.toIndex(_session.puzzle.entry.puzzle.size))
+          .toSet();
+    }
+    if (hint is MistakeHint) {
+      return hint.wrongCells
+          .map((ref) => ref.toIndex(_session.puzzle.entry.puzzle.size))
+          .toSet();
+    }
+    return const <int>{};
+  }
+
+  Set<int> get _hintTargets {
+    final hint = _hint;
+    if (hint is DeductionHint && _hintStage >= 2) {
+      return hint.deduction.affectedCells
+          .map((ref) => ref.toIndex(_session.puzzle.entry.puzzle.size))
+          .toSet();
+    }
+    return const <int>{};
+  }
 
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
     final palette = NodroPalette.of(context);
+    final puzzle = _session.puzzle.entry.puzzle;
+    final grid = _session.grid;
 
     return Scaffold(
       backgroundColor: palette.paper,
       body: SafeArea(
-        child: switch ((_error, _entry, _grid)) {
-          (final String error, _, _) =>
-            _Message(text: '${l10n.loadFailed}\n\n$error', palette: palette),
-          (_, final BankEntry entry, final PlayGrid grid) =>
-            _buildGame(context, l10n, palette, entry, grid),
-          _ => _Message(text: l10n.loadingBank, palette: palette),
-        },
-      ),
-    );
-  }
-
-  Widget _buildGame(BuildContext context, AppLocalizations l10n,
-      NodroPalette palette, BankEntry entry, PlayGrid grid) {
-    final puzzle = entry.puzzle;
-
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final side = math.min(
-          math.min(constraints.maxWidth * 0.92, maxBoardSide),
-          constraints.maxHeight - headerHeight - footerHeight,
-        );
-
-        return Column(
-          children: <Widget>[
-            SizedBox(
-              height: headerHeight,
-              child: _Header(
-                palette: palette,
-                title: l10n.headerLine(l10n.starBattleName, puzzle.size,
-                    _difficultyLabel(l10n, entry.tier)),
-                rule: l10n.ruleLine(puzzle.starsPerUnit),
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            final side = math.max(
+              120.0,
+              math.min(
+                math.min(constraints.maxWidth * 0.92, maxBoardSide),
+                constraints.maxHeight -
+                    headerHeight -
+                    controlsHeight -
+                    footerHeight,
               ),
-            ),
-            Expanded(
-              child: Center(
-                child: _Board(
-                  side: math.max(side, 120),
-                  grid: grid,
-                  palette: palette,
-                  blocked: _blocked,
-                  conflicts: _conflicts,
-                  placeController: _placeController,
-                  conflictController: _conflictController,
-                  winController: _winController,
-                  placedCell: _placedCell,
-                  onCellTapped: _tap,
+            );
+
+            return Column(
+              children: <Widget>[
+                SizedBox(
+                  height: headerHeight,
+                  child: _Header(
+                    palette: palette,
+                    title: l10n.headerLine(
+                      l10n.starBattleName,
+                      puzzle.size,
+                      Difficulty.of(_session.puzzle.entry.tier).label(l10n),
+                    ),
+                    rule: l10n.ruleLine(puzzle.starsPerUnit),
+                    elapsed: formatDuration(_session.elapsedSeconds),
+                    onBack: () => Navigator.of(context).maybePop(),
+                  ),
                 ),
-              ),
-            ),
-            SizedBox(
-              height: footerHeight,
-              child: _Footer(
-                palette: palette,
-                solved: grid.isSolved,
-                solvedText: l10n.solvedMessage,
-                counterText:
-                    l10n.starsPlaced(grid.starCount, puzzle.totalStars),
-                hint: l10n.tapHint,
-              ),
-            ),
-          ],
-        );
-      },
+                Expanded(
+                  child: Center(
+                    child: _Board(
+                      side: side,
+                      grid: grid,
+                      palette: palette,
+                      blocked: _blocked,
+                      conflicts: _conflicts,
+                      hintEvidence: _hintEvidence,
+                      hintTargets: _hintTargets,
+                      placeController: _placeController,
+                      conflictController: _conflictController,
+                      winController: _winController,
+                      placedCell: _placedCell,
+                      onCellTapped: _tap,
+                    ),
+                  ),
+                ),
+                SizedBox(
+                  height: controlsHeight,
+                  child: _Controls(
+                    palette: palette,
+                    l10n: l10n,
+                    canUndo: _session.canUndo,
+                    canRedo: _session.canRedo,
+                    onUndo: _undo,
+                    onRedo: _redo,
+                    onClear: _clear,
+                    onHint: _hintPressed,
+                  ),
+                ),
+                SizedBox(
+                  height: footerHeight,
+                  child: _Footer(
+                    palette: palette,
+                    l10n: l10n,
+                    hint: _hint,
+                    hintStage: _hintStage,
+                    solved: grid.isSolved,
+                    counterText:
+                        l10n.starsPlaced(grid.starCount, puzzle.totalStars),
+                    onUndoToLastGood: _undoToLastGood,
+                  ),
+                ),
+              ],
+            );
+          },
+        ),
+      ),
     );
   }
 }
 
-/// The board is the hero of the screen; the header recedes.
 class _Header extends StatelessWidget {
-  const _Header(
-      {required this.palette, required this.title, required this.rule});
+  const _Header({
+    required this.palette,
+    required this.title,
+    required this.rule,
+    required this.elapsed,
+    required this.onBack,
+  });
 
   final NodroPalette palette;
   final String title;
   final String rule;
+  final String elapsed;
+  final VoidCallback onBack;
 
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(18, 8, 18, 6),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        mainAxisAlignment: MainAxisAlignment.center,
+      padding: const EdgeInsets.fromLTRB(6, 4, 12, 4),
+      child: Row(
         children: <Widget>[
-          Text(
-            title,
-            textAlign: TextAlign.center,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: TextStyle(
-              color: palette.ink,
-              fontSize: 15,
-              height: 1.2,
-              fontWeight: FontWeight.w700,
-              letterSpacing: 0.2,
+          IconButton(
+            onPressed: onBack,
+            icon: Icon(Icons.arrow_back_rounded, color: palette.inkSoft),
+            visualDensity: VisualDensity.compact,
+          ),
+          Expanded(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: <Widget>[
+                Text(
+                  title,
+                  textAlign: TextAlign.center,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    color: palette.ink,
+                    fontSize: 14.5,
+                    height: 1.2,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                const SizedBox(height: 3),
+                Flexible(
+                  child: Text(
+                    rule,
+                    textAlign: TextAlign.center,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      color: palette.inkSoft,
+                      fontSize: 11,
+                      height: 1.25,
+                    ),
+                  ),
+                ),
+              ],
             ),
           ),
-          const SizedBox(height: 4),
-          Flexible(
+          SizedBox(
+            width: 48,
             child: Text(
-              rule,
-              textAlign: TextAlign.center,
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
+              elapsed,
+              textAlign: TextAlign.right,
               style: TextStyle(
                 color: palette.inkSoft,
-                fontSize: 11.5,
-                height: 1.3,
+                fontSize: 13,
+                fontFeatures: const <FontFeature>[FontFeature.tabularFigures()],
               ),
             ),
           ),
@@ -282,6 +526,8 @@ class _Board extends StatelessWidget {
     required this.palette,
     required this.blocked,
     required this.conflicts,
+    required this.hintEvidence,
+    required this.hintTargets,
     required this.placeController,
     required this.conflictController,
     required this.winController,
@@ -294,6 +540,8 @@ class _Board extends StatelessWidget {
   final NodroPalette palette;
   final Set<int> blocked;
   final Set<int> conflicts;
+  final Set<int> hintEvidence;
+  final Set<int> hintTargets;
   final AnimationController placeController;
   final AnimationController conflictController;
   final AnimationController winController;
@@ -304,9 +552,9 @@ class _Board extends StatelessWidget {
   Widget build(BuildContext context) {
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
-      // onTapDown, not onTapUp: the cell has to answer at the moment of touch.
-      // Waiting for release is the difference between a board that feels alive
-      // and one that feels like a form.
+      // onTapDown, not onTapUp: the cell answers at the moment of touch. That
+      // is the difference between a board that feels alive and one that feels
+      // like a form.
       onTapDown: (details) {
         final cell = side / grid.size;
         final col = (details.localPosition.dx / cell).floor();
@@ -317,9 +565,6 @@ class _Board extends StatelessWidget {
         onCellTapped(row * grid.size + col);
       },
       child: RepaintBoundary(
-        // Keyed so tests can capture exactly what this boundary put on screen,
-        // rather than re-rendering the painter themselves — which would prove
-        // only that the painter *could* draw, not that the board repainted.
         key: const ValueKey<String>('board'),
         child: AnimatedBuilder(
           animation: Listenable.merge(
@@ -331,6 +576,8 @@ class _Board extends StatelessWidget {
               palette: palette,
               blocked: blocked,
               conflicts: conflicts,
+              hintEvidence: hintEvidence,
+              hintTargets: hintTargets,
               placeProgress: placeController.value,
               placedCell: placedCell,
               conflictProgress: conflictController.value,
@@ -343,26 +590,230 @@ class _Board extends StatelessWidget {
   }
 }
 
-/// Counter and instructions live in the lower third, within thumb reach.
-class _Footer extends StatelessWidget {
-  const _Footer({
+/// Undo, redo, clear and hint, in the lower third where a thumb reaches.
+class _Controls extends StatelessWidget {
+  const _Controls({
     required this.palette,
-    required this.solved,
-    required this.solvedText,
-    required this.counterText,
-    required this.hint,
+    required this.l10n,
+    required this.canUndo,
+    required this.canRedo,
+    required this.onUndo,
+    required this.onRedo,
+    required this.onClear,
+    required this.onHint,
   });
 
   final NodroPalette palette;
-  final bool solved;
-  final String solvedText;
-  final String counterText;
-  final String hint;
+  final AppLocalizations l10n;
+  final bool canUndo;
+  final bool canRedo;
+  final VoidCallback onUndo;
+  final VoidCallback onRedo;
+  final VoidCallback onClear;
+  final VoidCallback onHint;
 
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(18, 12, 18, 14),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+        children: <Widget>[
+          _ControlButton(
+            palette: palette,
+            icon: Icons.undo_rounded,
+            label: l10n.actionUndo,
+            onTap: canUndo ? onUndo : null,
+          ),
+          _ControlButton(
+            palette: palette,
+            icon: Icons.redo_rounded,
+            label: l10n.actionRedo,
+            onTap: canRedo ? onRedo : null,
+          ),
+          _ControlButton(
+            palette: palette,
+            icon: Icons.delete_outline_rounded,
+            label: l10n.actionClear,
+            onTap: onClear,
+          ),
+          _ControlButton(
+            palette: palette,
+            icon: Icons.lightbulb_outline_rounded,
+            label: l10n.actionHint,
+            onTap: onHint,
+            emphasised: true,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ControlButton extends StatelessWidget {
+  const _ControlButton({
+    required this.palette,
+    required this.icon,
+    required this.label,
+    required this.onTap,
+    this.emphasised = false,
+  });
+
+  final NodroPalette palette;
+  final IconData icon;
+  final String label;
+  final VoidCallback? onTap;
+  final bool emphasised;
+
+  @override
+  Widget build(BuildContext context) {
+    final enabled = onTap != null;
+    final colour = !enabled
+        ? palette.hairline
+        : (emphasised ? palette.accent : palette.ink);
+
+    return Semantics(
+      button: true,
+      enabled: enabled,
+      label: label,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(10),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: <Widget>[
+              Icon(icon, color: colour, size: 24),
+              const SizedBox(height: 2),
+              Text(
+                label,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(color: colour, fontSize: 10.5, height: 1.1),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// The counter, or whatever the current hint is saying.
+class _Footer extends StatelessWidget {
+  const _Footer({
+    required this.palette,
+    required this.l10n,
+    required this.hint,
+    required this.hintStage,
+    required this.solved,
+    required this.counterText,
+    required this.onUndoToLastGood,
+  });
+
+  final NodroPalette palette;
+  final AppLocalizations l10n;
+  final Hint? hint;
+  final int hintStage;
+  final bool solved;
+  final String counterText;
+  final VoidCallback onUndoToLastGood;
+
+  @override
+  Widget build(BuildContext context) {
+    final current = hint;
+
+    if (current is MistakeHint) {
+      return Padding(
+        padding: const EdgeInsets.fromLTRB(16, 4, 16, 8),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: <Widget>[
+            Text(
+              l10n.hintMistakeTitle,
+              style: TextStyle(
+                color: palette.danger,
+                fontSize: 14,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+            const SizedBox(height: 2),
+            Flexible(
+              child: Text(
+                l10n.hintMistakeBody(current.wrongCells.length),
+                textAlign: TextAlign.center,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                    color: palette.inkSoft, fontSize: 11.5, height: 1.25),
+              ),
+            ),
+            TextButton(
+              onPressed: onUndoToLastGood,
+              child: Text(l10n.hintUndoToMistake,
+                  style: TextStyle(color: palette.accent, fontSize: 12)),
+            ),
+          ],
+        ),
+      );
+    }
+
+    if (current is DeductionHint) {
+      final text = HintText(l10n);
+      return Padding(
+        padding: const EdgeInsets.fromLTRB(16, 6, 16, 8),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: <Widget>[
+            Text(
+              l10n.hintStepTechnique(text.name(current.deduction.techniqueId)),
+              textAlign: TextAlign.center,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                color: palette.accent,
+                fontSize: 13.5,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+            const SizedBox(height: 3),
+            Flexible(
+              child: Text(
+                hintStage >= 2
+                    ? text.why(current.deduction)
+                    : l10n.hintStepLook,
+                textAlign: TextAlign.center,
+                maxLines: 3,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                    color: palette.ink, fontSize: 11.5, height: 1.3),
+              ),
+            ),
+            const SizedBox(height: 2),
+            Text(
+              hintStage >= 2 ? l10n.hintApply : l10n.hintNextStep,
+              style: TextStyle(
+                  color: palette.inkSoft,
+                  fontSize: 10.5,
+                  fontStyle: FontStyle.italic),
+            ),
+          ],
+        ),
+      );
+    }
+
+    if (current is StuckHint) {
+      return Center(
+        child: Text(l10n.hintStuck,
+            style: TextStyle(color: palette.inkSoft, fontSize: 13)),
+      );
+    }
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 6, 16, 10),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         mainAxisAlignment: MainAxisAlignment.center,
@@ -371,49 +822,24 @@ class _Footer extends StatelessWidget {
             duration: const Duration(milliseconds: 220),
             style: TextStyle(
               color: solved ? palette.success : palette.ink,
-              fontSize: solved ? 27 : 19,
+              fontSize: solved ? 25 : 18,
               height: 1.2,
               fontWeight: solved ? FontWeight.w700 : FontWeight.w400,
-              letterSpacing: solved ? 0.4 : 0,
             ),
-            child: Text(solved ? solvedText : counterText),
+            child: Text(solved ? l10n.solvedMessage : counterText),
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 5),
           Flexible(
             child: Text(
-              hint,
+              l10n.tapHint,
               textAlign: TextAlign.center,
               maxLines: 2,
               overflow: TextOverflow.ellipsis,
               style: TextStyle(
-                color: palette.inkSoft,
-                fontSize: 12.5,
-                height: 1.3,
-              ),
+                  color: palette.inkSoft, fontSize: 11.5, height: 1.25),
             ),
           ),
         ],
-      ),
-    );
-  }
-}
-
-class _Message extends StatelessWidget {
-  const _Message({required this.text, required this.palette});
-
-  final String text;
-  final NodroPalette palette;
-
-  @override
-  Widget build(BuildContext context) {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(24),
-        child: Text(
-          text,
-          textAlign: TextAlign.center,
-          style: TextStyle(color: palette.ink, fontSize: 16),
-        ),
       ),
     );
   }

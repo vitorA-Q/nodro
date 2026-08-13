@@ -30,6 +30,7 @@ class NodroPalette {
     required this.markGrey,
     required this.success,
     required this.danger,
+    required this.accent,
     required this.neighbourWash,
     required this.regionTints,
   });
@@ -56,6 +57,10 @@ class NodroPalette {
   /// Conflict only. Never decorative.
   final Color danger;
 
+  /// Hint highlighting. A third reserved colour, distinct from [danger] and
+  /// [success] so a highlighted cell is never mistaken for a mistake or a win.
+  final Color accent;
+
   /// The wash laid over the eight cells around a placed star.
   ///
   /// This is the single most valuable element on the board: it teaches the
@@ -73,6 +78,7 @@ class NodroPalette {
     markGrey: Color(0xFF9AA1AE),
     success: Color(0xFF15795A),
     danger: Color(0xFFC2352B),
+    accent: Color(0xFF1D5FBF),
     neighbourWash: Color(0x1A141821),
     regionTints: <Color>[
       Color(0xFFF4D6D2),
@@ -96,6 +102,7 @@ class NodroPalette {
     markGrey: Color(0xFF6E7787),
     success: Color(0xFF4FD1A0),
     danger: Color(0xFFFF6B5E),
+    accent: Color(0xFF7FB2FF),
     neighbourWash: Color(0x1FE8ECF3),
     regionTints: <Color>[
       Color(0xFF722C21),

@@ -2,18 +2,14 @@
   "@@locale": "en",
 
   "appTitle": "Nodro",
-  "@appTitle": {
-    "description": "The product name. Not translated."
-  },
+  "@appTitle": { "description": "The product name. Not translated." },
 
   "starBattleName": "Star Battle",
-  "@starBattleName": {
-    "description": "Display name of the Star Battle puzzle type."
-  },
+  "@starBattleName": {},
 
   "difficultyEasy": "Easy",
   "@difficultyEasy": {
-    "description": "Player-facing difficulty label. The four labels map onto internal technique tiers 1..7; only the label is translated, and only the tier is ever stored."
+    "description": "Player-facing difficulty label. The four labels map onto internal technique tiers 1..7; only the tier is ever stored."
   },
   "difficultyMedium": "Medium",
   "@difficultyMedium": {},
@@ -22,46 +18,186 @@
   "difficultyExtreme": "Extreme",
   "@difficultyExtreme": {},
 
+  "unitRow": "row",
+  "@unitRow": { "description": "Used inside hint sentences." },
+  "unitColumn": "column",
+  "@unitColumn": {},
+  "unitRegion": "region",
+  "@unitRegion": {},
+
+  "selectTitle": "Choose a puzzle",
+  "@selectTitle": {},
+  "selectSolvedCount": "{solved} of {total} solved",
+  "@selectSolvedCount": {
+    "placeholders": { "solved": { "type": "int" }, "total": { "type": "int" } }
+  },
+  "selectEmptyGroup": "None yet",
+  "@selectEmptyGroup": {
+    "description": "Shown on a difficulty the bank has no puzzles for."
+  },
+  "selectBestTime": "Best {time}",
+  "@selectBestTime": {
+    "placeholders": { "time": { "type": "String" } }
+  },
+  "dailyChallenge": "Daily challenge",
+  "@dailyChallenge": {},
+  "dailyStreak": "{days} day streak",
+  "@dailyStreak": {
+    "placeholders": { "days": { "type": "int" } }
+  },
+  "dailyDoneToday": "Done today",
+  "@dailyDoneToday": {},
+  "continueGame": "Continue",
+  "@continueGame": {},
+
   "headerLine": "{name} · {size}×{size} · {difficulty}",
   "@headerLine": {
-    "description": "Compact band above the board.",
     "placeholders": {
       "name": { "type": "String" },
       "size": { "type": "int" },
       "difficulty": { "type": "String" }
     }
   },
-
   "ruleLine": "{stars} star per row, column and region · stars never touch, not even diagonally",
   "@ruleLine": {
-    "description": "The rules of the puzzle, always visible.",
-    "placeholders": {
-      "stars": { "type": "int" }
-    }
+    "placeholders": { "stars": { "type": "int" } }
   },
-
   "tapHint": "Tap a cell: empty → star → cross",
-  "@tapHint": {
-    "description": "Explains the input cycle. Always visible in stage A, since there is no tutorial yet."
-  },
-
+  "@tapHint": {},
   "starsPlaced": "{placed} of {total} stars",
   "@starsPlaced": {
-    "description": "Progress counter.",
-    "placeholders": {
-      "placed": { "type": "int" },
-      "total": { "type": "int" }
-    }
+    "placeholders": { "placed": { "type": "int" }, "total": { "type": "int" } }
   },
-
   "solvedMessage": "Solved!",
-  "@solvedMessage": {
-    "description": "Shown when the player completes the puzzle correctly."
-  },
-
+  "@solvedMessage": {},
   "loadingBank": "Loading puzzle…",
   "@loadingBank": {},
-
   "loadFailed": "Could not load the puzzle bank.",
-  "@loadFailed": {}
+  "@loadFailed": {},
+
+  "actionUndo": "Undo",
+  "@actionUndo": {},
+  "actionRedo": "Redo",
+  "@actionRedo": {},
+  "actionClear": "Clear",
+  "@actionClear": {},
+  "actionHint": "Hint",
+  "@actionHint": {},
+  "actionBack": "Back",
+  "@actionBack": {},
+  "clearConfirmTitle": "Clear the board?",
+  "@clearConfirmTitle": {},
+  "clearConfirmBody": "Every mark is removed. You can still undo it.",
+  "@clearConfirmBody": {},
+  "cancel": "Cancel",
+  "@cancel": {},
+
+  "wonTitle": "Solved",
+  "@wonTitle": {},
+  "wonTime": "{time}",
+  "@wonTime": {
+    "placeholders": { "time": { "type": "String" } }
+  },
+  "wonNewBest": "New best time",
+  "@wonNewBest": {},
+  "wonHintsUsed": "{count, plural, =0{No hints} =1{1 hint} other{{count} hints}}",
+  "@wonHintsUsed": {
+    "placeholders": { "count": { "type": "int" } }
+  },
+  "nextPuzzle": "Next puzzle",
+  "@nextPuzzle": {
+    "description": "The button that keeps a session going. Prominent by design."
+  },
+  "backToMenu": "Choose another",
+  "@backToMenu": {},
+  "shareResult": "Share",
+  "@shareResult": {},
+  "copiedToClipboard": "Copied",
+  "@copiedToClipboard": {},
+
+  "hintStepTechnique": "Technique: {name}",
+  "@hintStepTechnique": {
+    "placeholders": { "name": { "type": "String" } }
+  },
+  "hintStepLook": "Look at the highlighted cells.",
+  "@hintStepLook": {},
+  "hintNextStep": "Tell me more",
+  "@hintNextStep": {},
+  "hintApply": "Apply it",
+  "@hintApply": {},
+  "hintDismiss": "Got it",
+  "@hintDismiss": {},
+  "hintMistakeTitle": "There is a mistake on the board",
+  "@hintMistakeTitle": {},
+  "hintMistakeBody": "{count, plural, =1{One mark contradicts the solution.} other{{count} marks contradict the solution.}} Undo back to before it and the hints can help again.",
+  "@hintMistakeBody": {
+    "placeholders": { "count": { "type": "int" } }
+  },
+  "hintUndoToMistake": "Undo to the last good move",
+  "@hintUndoToMistake": {},
+  "hintStuck": "No named technique applies here.",
+  "@hintStuck": {},
+
+  "techName_sbAdjacencyElimination": "Neighbour elimination",
+  "@techName_sbAdjacencyElimination": {},
+  "techWhy_sbAdjacencyElimination": "A star sits at {starCell}. Stars never touch, not even diagonally, so none of the {count} marked cells can hold one.",
+  "@techWhy_sbAdjacencyElimination": {
+    "placeholders": { "starCell": { "type": "String" }, "count": { "type": "int" } }
+  },
+
+  "techName_sbUnitCompletionElimination": "Unit already complete",
+  "@techName_sbUnitCompletionElimination": {},
+  "techWhy_sbUnitCompletionElimination": "This {unit} {index} already holds all {quota} of its stars, so every cell still open in it must be empty.",
+  "@techWhy_sbUnitCompletionElimination": {
+    "placeholders": { "unit": { "type": "String" }, "index": { "type": "int" }, "quota": { "type": "int" } }
+  },
+
+  "techName_sbUnitForcedFill": "Only places left",
+  "@techName_sbUnitForcedFill": {},
+  "techWhy_sbUnitForcedFill": "This {unit} {index} still needs {remaining} star(s) and has exactly that many cells left, so every one of them is a star.",
+  "@techWhy_sbUnitForcedFill": {
+    "placeholders": { "unit": { "type": "String" }, "index": { "type": "int" }, "remaining": { "type": "int" } }
+  },
+
+  "techName_sbSharedNeighbourElimination": "Shared neighbours",
+  "@techName_sbSharedNeighbourElimination": {},
+  "techWhy_sbSharedNeighbourElimination": "The remaining star of this {unit} {index} must be in one of the {candidateCount} highlighted cells. Each marked cell touches all of them, so wherever that star lands, they cannot hold one.",
+  "@techWhy_sbSharedNeighbourElimination": {
+    "placeholders": { "unit": { "type": "String" }, "index": { "type": "int" }, "candidateCount": { "type": "int" } }
+  },
+
+  "techName_sbRegionLineConfinement": "Region trapped in a line",
+  "@techName_sbRegionLineConfinement": {},
+  "techWhy_sbRegionLineConfinement": "Every cell still open in region {regionIndex} lies in this {line} {lineIndex}. That region's {stars} star(s) therefore use up the whole quota of the line, so the rest of the line is empty.",
+  "@techWhy_sbRegionLineConfinement": {
+    "placeholders": { "regionIndex": { "type": "int" }, "line": { "type": "String" }, "lineIndex": { "type": "int" }, "stars": { "type": "int" } }
+  },
+
+  "techName_sbLineRegionConfinement": "Line trapped in a region",
+  "@techName_sbLineRegionConfinement": {},
+  "techWhy_sbLineRegionConfinement": "Every cell still open in this {line} {lineIndex} sits inside region {regionIndex}. The line's {stars} star(s) therefore come out of that region's quota, so the region's other cells are empty.",
+  "@techWhy_sbLineRegionConfinement": {
+    "placeholders": { "line": { "type": "String" }, "lineIndex": { "type": "int" }, "regionIndex": { "type": "int" }, "stars": { "type": "int" } }
+  },
+
+  "techName_sbCrowdingExclusion": "Too crowded",
+  "@techName_sbCrowdingExclusion": {},
+  "techWhy_sbCrowdingExclusion": "This {unit} {index} still needs {remaining} stars. The marked cell touches every other candidate, so putting a star there would leave nowhere for the others.",
+  "@techWhy_sbCrowdingExclusion": {
+    "placeholders": { "unit": { "type": "String" }, "index": { "type": "int" }, "remaining": { "type": "int" } }
+  },
+
+  "techName_sbForwardElimination": "One step ahead",
+  "@techName_sbForwardElimination": {},
+  "techWhy_sbForwardElimination": "Suppose a star went at {cell}. It would black out its neighbours and close its row, column and region — and then some unit could no longer reach its own quota. So no star can go there.",
+  "@techWhy_sbForwardElimination": {
+    "placeholders": { "cell": { "type": "String" } }
+  },
+
+  "techName_sbRegionsWithinLines": "Regions filling whole lines",
+  "@techName_sbRegionsWithinLines": {},
+  "techWhy_sbRegionsWithinLines": "{regionCount} regions have all their open cells inside {line}s {lineIndices}. Those regions supply exactly the {stars} stars those lines need, so every other cell in those lines is empty.",
+  "@techWhy_sbRegionsWithinLines": {
+    "placeholders": { "regionCount": { "type": "int" }, "line": { "type": "String" }, "lineIndices": { "type": "String" }, "stars": { "type": "int" } }
+  }
 }
