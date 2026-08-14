@@ -28,8 +28,8 @@ Future<void> showWonSheet({
 }) {
   return showModalBottomSheet<void>(
     context: context,
-    isDismissible: false,
-    enableDrag: false,
+    isDismissible: session.isPractice,
+    enableDrag: session.isPractice,
     backgroundColor: Colors.transparent,
     builder: (context) => _WonSheet(
       session: session,
@@ -159,7 +159,11 @@ class _WonSheet extends StatelessWidget {
       ),
       child: SafeArea(
         top: false,
-        child: Column(
+        // Scrollable rather than fixed: on a short screen — a small phone in
+        // landscape, or a browser window dragged down — the sheet was
+        // overflowing and painting the striped error bars over the buttons.
+        child: SingleChildScrollView(
+          child: Column(
           mainAxisSize: MainAxisSize.min,
           children: <Widget>[
             Icon(Icons.star_rounded, color: palette.success, size: 40),
@@ -174,44 +178,74 @@ class _WonSheet extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 10),
-            Text(
-              formatDuration(session.elapsedSeconds),
-              style: TextStyle(
-                color: palette.ink,
-                fontSize: 46,
-                height: 1.05,
-                fontWeight: FontWeight.w700,
-                fontFeatures: const <FontFeature>[FontFeature.tabularFigures()],
-              ),
-            ),
-            if (isNewBest) ...<Widget>[
-              const SizedBox(height: 4),
+            // Practice runs without a clock on purpose, so there is no time to
+            // show. Printing 0:00 read as an impossibly fast solve, which is
+            // worse than showing nothing.
+            if (session.isPractice)
               Text(
-                l10n.wonNewBest,
+                l10n.practiceBanner,
+                textAlign: TextAlign.center,
                 style: TextStyle(
-                  color: palette.accent,
-                  fontSize: 13,
+                  color: palette.inkSoft,
+                  fontSize: 17,
                   fontWeight: FontWeight.w700,
                 ),
-              ),
-            ],
-            const SizedBox(height: 6),
-            Text(
-              l10n.wonHintsUsed(session.hintsUsed),
-              style: TextStyle(color: palette.inkSoft, fontSize: 13),
-            ),
-            if (isDaily && streak > 0) ...<Widget>[
-              const SizedBox(height: 4),
+              )
+            else ...<Widget>[
               Text(
-                '🔥 ${l10n.dailyStreak(streak)}',
+                formatDuration(session.elapsedSeconds),
+                style: TextStyle(
+                  color: palette.ink,
+                  fontSize: 46,
+                  height: 1.05,
+                  fontWeight: FontWeight.w700,
+                  fontFeatures: const <FontFeature>[
+                    FontFeature.tabularFigures()
+                  ],
+                ),
+              ),
+              if (isNewBest) ...<Widget>[
+                const SizedBox(height: 4),
+                Text(
+                  l10n.wonNewBest,
+                  style: TextStyle(
+                    color: palette.accent,
+                    fontSize: 13,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ],
+              const SizedBox(height: 6),
+              Text(
+                l10n.wonHintsUsed(session.hintsUsed),
                 style: TextStyle(color: palette.inkSoft, fontSize: 13),
               ),
+              if (isDaily && streak > 0) ...<Widget>[
+                const SizedBox(height: 4),
+                Text(
+                  '🔥 ${l10n.dailyStreak(streak)}',
+                  style: TextStyle(color: palette.inkSoft, fontSize: 13),
+                ),
+              ],
             ],
             const SizedBox(height: 22),
+            // Practice is not a score, so there is nothing to share and no
+            // next board to hand out — sharing a practice run would report a
+            // result the player did not earn.
+            if (session.isPractice)
+              _SecondaryButton(
+                palette: palette,
+                label: l10n.backToMenu,
+                icon: Icons.grid_view_rounded,
+                onTap: () {
+                  Navigator.of(context).pop();
+                  Navigator.of(context).maybePop();
+                },
+              )
             // The daily deliberately does NOT offer another puzzle. Handing out
             // a fresh board at the exact moment "one per day" should become
             // clear would argue against the mechanic while announcing it.
-            if (isDaily) ...<Widget>[
+            else if (isDaily) ...<Widget>[
               _PrimaryButton(
                 palette: palette,
                 label: l10n.shareResult,
@@ -265,6 +299,7 @@ class _WonSheet extends StatelessWidget {
               ),
             ],
           ],
+          ),
         ),
       ),
     );
