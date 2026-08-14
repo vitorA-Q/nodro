@@ -11,6 +11,7 @@
     "prefer_related_applications": false,
     "categories": ["games", "puzzle", "education"],
     "lang": "en",
+    "_comment": "The two icon families are separate files on purpose. One file declared 'any maskable' renders about 20% smaller than its neighbours wherever no mask is applied, because the padding a maskable icon needs is then shown rather than cropped.",
     "icons": [
         {
             "src": "icons/Icon-192.png",

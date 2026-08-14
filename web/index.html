@@ -40,10 +40,18 @@
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black">
   <meta name="apple-mobile-web-app-title" content="Nodro">
-  <link rel="apple-touch-icon" href="icons/Icon-192.png">
+  <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
 
-  <!-- Favicon -->
-  <link rel="icon" type="image/png" href="favicon.png"/>
+  <!--
+    Three favicons on purpose. The SVG is what a modern browser picks and it
+    scales to any tab size; the ICO carries hand-sized 16, 32 and 48 bitmaps
+    for clients that ask for /favicon.ico without reading this file at all; the
+    PNG is the plain fallback. The 16px bitmap is drawn at 16px rather than
+    downscaled — at 256 total pixels a downscale turns the star to mush.
+  -->
+  <link rel="icon" type="image/svg+xml" href="favicon.svg">
+  <link rel="icon" type="image/png" sizes="32x32" href="favicon.png">
+  <link rel="alternate icon" href="favicon.ico">
 
   <title>Nodro — Star Battle</title>
   <link rel="manifest" href="manifest.json">

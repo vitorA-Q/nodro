@@ -230,6 +230,7 @@ void main(List<String> args) {
   _writeRaw(outDir, 'sitemap.xml', _sitemap(urls));
   _writeRaw(outDir, 'robots.txt',
       'User-agent: *\nAllow: /\n\nSitemap: $siteUrl/sitemap.xml\n');
+  _copyBrandAssets(outDir);
 
   stdout.writeln('pages written: ${urls.length}');
   stdout.writeln('output: ${outDir.path}');
@@ -459,6 +460,34 @@ String _url(Lang lang, String path) {
   return parts.isEmpty ? '$siteUrl/' : '$siteUrl/${parts.join('/')}/';
 }
 
+/// The icon files live in `web/` because that is where the Flutter build wants
+/// them; the static site needs them at the site ROOT, because a browser asking
+/// for /favicon.ico never reads any HTML first and a social scraper resolves
+/// og:image against the domain. Copying rather than duplicating keeps
+/// tool/generate_icons.dart the only thing that ever writes an icon.
+void _copyBrandAssets(Directory root) {
+  const files = <String>[
+    'favicon.ico',
+    'favicon.png',
+    'favicon.svg',
+    'og.png',
+    'icons/Icon-192.png',
+    'icons/Icon-512.png',
+    'icons/apple-touch-icon.png',
+  ];
+  for (final name in files) {
+    final source = File('web/$name');
+    if (!source.existsSync()) {
+      throw StateError('web/$name is missing — run '
+          'dart run tool/generate_icons.dart before generating the site');
+    }
+    final target = File('${root.path}/$name');
+    target.parent.createSync(recursive: true);
+    target.writeAsBytesSync(source.readAsBytesSync());
+  }
+  stdout.writeln('brand assets copied: ${files.length}');
+}
+
 void _write(Directory root, String relative, String html) {
   final file = File('${root.path}/$relative');
   file.parent.createSync(recursive: true);
@@ -495,7 +524,12 @@ String _shell(
 <meta property="og:url" content="$canonical">
 <meta property="og:image" content="$siteUrl/og.png">
 <meta name="twitter:card" content="summary_large_image">
-<link rel="icon" href="$siteUrl/favicon.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<link rel="icon" type="image/svg+xml" href="$siteUrl/favicon.svg">
+<link rel="icon" type="image/png" sizes="32x32" href="$siteUrl/favicon.png">
+<link rel="alternate icon" href="$siteUrl/favicon.ico">
+<link rel="apple-touch-icon" href="$siteUrl/icons/apple-touch-icon.png">
 $structuredData
 <style>
 :root{--paper:$paper;--ink:$ink;--soft:#6B7180;--accent:$accent}

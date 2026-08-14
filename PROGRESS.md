@@ -177,3 +177,123 @@ na própria mensagem, esperando sua decisão. Opções na conversa.
 **O que de fato protege contra puzzle "frouxo" hoje** é o PROP-3 dos dois lados: o puzzle só
 recebe o rótulo T4 se ele resolve com técnicas até T4 **e falha** com técnicas até T3. Ou seja,
 a técnica difícil é obrigatória, não decorativa.
+---
+
+## 🚀 MARCO 1 — PUBLICADO
+
+**Data:** 14/08/2026
+**Endereço:** https://vitora-q.github.io/nodro/
+
+O jogo está no ar. Rotas conferidas, todas respondendo 200:
+
+| Rota | O que é |
+|---|---|
+| `/` | Home indexável (en) |
+| `/pt/` | Home indexável (pt) |
+| `/star-battle/` | Regras completas |
+| `/star-battle/techniques/` | Índice das 9 técnicas |
+| `/star-battle/techniques/<nome>/` | Uma página por técnica, com diagrama SVG |
+| `/play/` | O jogo |
+| `/sitemap.xml`, `/robots.txt` | Para o Google |
+
+**24 páginas HTML escritas à mão**, em português e inglês, com hreflang. Os 9 diagramas são
+gerados pelo solver de verdade — não podem divergir do jogo.
+
+### O que foi resolvido nesta rodada
+
+**O 404.** O workflow rodava, mas falhava no passo que configura o GitHub Pages, porque o Pages
+não estava ligado nas configurações do repositório. Passei a usar a opção que **liga o Pages
+pela API**, então não sobrou nenhum clique manual.
+
+**O bug do diário "0 segundos".** Ao refazer o desafio do dia você entra em modo prática, onde o
+cronômetro não roda de propósito. Eu mostrava esse zero como se fosse um tempo — parecia que
+você tinha resolvido instantaneamente. Agora a tela diz que foi prática e não oferece
+compartilhar nem próximo puzzle.
+
+**Um segundo bug que o teste novo achou sozinho:** a tela de conclusão estourava 6,5 pixels em
+tela baixa e pintava as listras de erro por cima dos próprios botões.
+
+**APK de release gerado:** 46,2 MB, assinado com chave de debug — serve para instalar e testar,
+não para a Play Store (isso precisa de chave de publicação, e é da Fase 6).
+
+### Números
+
+- 101 testes passando, 1 pulado (o lote noturno)
+- `dart analyze` sem nenhum problema
+- Banco de 4.500 puzzles verificados
+- O workflow roda `analyze` + suíte inteira **antes** de publicar
+---
+
+## 🎨 O ícone
+
+Antes de desenhar qualquer coisa, mandei fazer um levantamento do que realmente funciona em
+loja de aplicativo. A parte mais útil não veio de artigo de marketing: **306 ícones de jogos de
+lógica do Google Play foram medidos um a um** (cor dominante, brilho, saturação, quantidade de
+detalhe). O resultado decidiu o desenho.
+
+### O que a medição mostrou
+
+| Fatia da categoria | Quanto |
+|---|---|
+| Ícones claros | 36% |
+| Ícones cheios de detalhe | 81% |
+| **Claros E limpos ao mesmo tempo** | **4%** |
+| Azul + ciano juntos | 19% |
+
+Ou seja: **fundo claro não é a vaga vazia — a vaga vazia é ser CALMO.** Três de cada quatro
+ícones claros da categoria são claros e poluídos. Papel bege quente não é usado por ninguém.
+
+### O desenho
+
+Uma estrela de tinta e **uma linha de região**. Nada mais.
+
+A estrela sozinha seria um erro: é o símbolo genérico de avaliação, e a Play Store desenha
+estrelinhas de nota do lado do seu ícone na mesma tela. A linha de região é a fuga — ela diz que
+a estrela mora dentro de uma região irregular, que é a regra do Star Battle e o que nenhuma
+outra estrela significa. Os quatro concorrentes de Star Battle desenham a grade inteira colorida;
+isso vira borrão em miniatura e vira cópia em qualquer tamanho.
+
+A estrela é **de propósito mais gorda** que o normal (raio interno na metade do externo, contra
+os 0,38 habituais). Duas razões: parece letra impressa em vez de estrelinha de nota, e foi a
+única proporção cujas cinco pontas continuaram separadas a 16 pixels.
+
+### O detalhe some conforme a tela encolhe
+
+Um desenho só não serve para 512 e para 16 pixels. Um ícone de 16 px tem **256 pixels no total**
+e nada fino sobrevive: um traço de 30 px vira 0,9 px e some. Então a linha de região existe no
+ícone grande e **o favicon a descarta e cresce a estrela** para segurar sozinho.
+
+No Android o mesmo problema apareceu de outro jeito: com a estrela centralizada, a máscara
+redonda do Pixel cortava a região fora e sobrava só a estrela. Empurrei a estrela para cima e
+para a direita — dentro do limite que a plataforma garante — e a região passou a caber dentro do
+círculo. Isso eu vi renderizando, não deduzindo.
+
+### A fraqueza, dita na cara
+
+Papel contra branco puro dá 1,07:1 — a borda do quadrado some no fundo branco da loja. É real.
+Mas a marca em si fica em 16,6:1, então continua perfeitamente legível, e a Play desenha uma
+sombra própria que devolve a borda justamente ali. A alternativa (fundo escuro) mede **1,10:1
+contra a aba escura do Chrome** — sumiria no navegador, que é a superfície principal de um jogo
+que estreia na web. Papel ganha.
+
+### O que foi entregue
+
+Todos os arquivos saem de um único lugar (`tool/icon_spec.dart`) — não existe PNG editado à mão
+no repositório:
+
+- Ícone da Play (512), ícones PWA normais e mascaráveis (192 e 512), apple-touch (180)
+- Favicon SVG + ICO com 16, 32 e 48 — **o de 16 px é desenhado no tamanho, não reduzido**
+- Android: ícone adaptativo com camadas separadas + camada monocromática (tema do Android 13+)
+  e os 5 tamanhos antigos
+- Cartão social 1200×630 com a marca NODRO
+
+**26 testes novos** medem os arquivos publicados de verdade: zona segura das máscaras, opacidade,
+massa de tinta, contraste, e se o favicon de 16 px ainda tem cara de estrela.
+
+Uma observação honesta sobre esses testes: as verificações de *estrutura* que escrevi primeiro
+(a linha mais larga fica acima do centro, as pernas se separam embaixo) **passavam até para uma
+estrela de 3 pixels**. Eram necessárias, não suficientes — um teste que não podia falhar. Medi
+cinco variantes e troquei pela medida que de fato separa as boas das ruins: a quantidade de
+tinta. A proporção clássica de estrela é reprovada por ela, que é exatamente o ponto.
+
+Para ver o ícone em todos os contextos: `store/icon-preview.html`.

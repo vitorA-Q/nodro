@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Expected to be cropped. Under a circular mask the seam falls outside the
+  visible circle entirely and the icon becomes the star on paper, which is the
+  same graceful degradation the 16px favicon makes on purpose.
+-->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <path
+        android:fillColor="#FAF7F1"
+        android:pathData="M0,0 H108 V108 H0 Z"/>
+    <path
+        android:fillColor="#E7DECB"
+        android:pathData="M0,74.5 H41.5 V108.0 H0 Z"/>
+    <path
+        android:fillColor="#141821"
+        android:pathData="M0,74.5 H41.5 V108.0 H34.5 V81.5 H0 Z"/>
+</vector>
